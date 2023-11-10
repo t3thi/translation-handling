@@ -1,0 +1,37 @@
+{
+    "name": "t3thi/translation-handling",
+    "description": "TYPO3 extension to showcase TYPO3 translation handling capabilities",
+    "type": "typo3-cms-extension",
+	"authors": [{
+		"name": "TYPO3 Translation Handling Initiative",
+		"role": "Developer"
+	}],
+    "license": "GPL-2.0-or-later",
+	"keywords": [
+		"typo3",
+		"translation",
+		"initiative",
+		"strict",
+		"free",
+		"fallback"
+	],
+	"support": {
+		"chat": "https://typo3.slack.com/archives/C05D7UF1L8M",
+		"docs": "https://github.com/t3thi/translation-handling",
+		"issues": "https://github.com/t3thi/translation-handling/issues",
+		"source": "https://github.com/t3thi/translation-handling"
+	},
+    "require": {
+        "typo3/cms-core": "^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "T3thi\\TranslationHandling\\": "Classes/"
+        }
+    },
+    "extra": {
+        "typo3/cms": {
+            "extension-key": "translation_handling"
+        }
+    }
+}
