@@ -6,3 +6,10 @@ services:
   T3thi\TranslationHandling\:
     resource: '../Classes/*'
     exclude: '../Classes/Domain/Model/*'
+
+  T3thi\TranslationHandling\Command\GeneratorCommand:
+    tags:
+      - name: 'console.command'
+        command: 'translation-handling:generate'
+        description: 'Generate page tree(s) with translation handling examples'
+        schedulable: false
