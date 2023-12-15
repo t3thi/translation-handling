@@ -5,7 +5,7 @@ $EM_CONF[$_EXTKEY] = [
     'description' => 'TYPO3 extension to showcase TYPO3 translation handling capabilities',
     'constraints' => [
         'depends' => [
-            'typo3' => '12.0.0-12.4.99',
+            'typo3' => '12.0.0-13.99.99',
         ],
     ],
     'autoload' => [

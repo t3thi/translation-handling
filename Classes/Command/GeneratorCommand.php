@@ -35,7 +35,7 @@ final class GeneratorCommand extends Command
 {
     protected function configure(): void
     {
-        $this->addArgument('type', InputArgument::OPTIONAL, 'Create page tree data, valid arguments are "fallback", "strict", "free" and "all"', 'all');
+        $this->addArgument('type', InputArgument::OPTIONAL, 'Create page tree data, valid arguments are "fallback", "strict", "free" and "all"');
         $this->addOption('delete', 'd', InputOption::VALUE_NONE, 'Delete page tree and its records for the selected type');
         $this->addOption('create', 'c', InputOption::VALUE_NONE, 'Create page tree and its records for the selected type');
     }
@@ -51,7 +51,8 @@ final class GeneratorCommand extends Command
         Bootstrap::initializeBackendAuthentication();
 
         if (!$input->getOption('create') && !$input->getOption('delete')) {
-            $output->writeln('<comment>Please specify an option "--create" or "--delete"</comment>');
+            $output->writeln('<error>Please specify an option "--create" or "--delete"</error>');
+            return Command::FAILURE;
         }
 
         switch ($input->getArgument('type')) {

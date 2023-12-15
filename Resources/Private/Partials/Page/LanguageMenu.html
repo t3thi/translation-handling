@@ -1,0 +1,7 @@
+<f:for each="{languageNavigation}" as="item">
+    <f:if condition="{item.available}">
+        <a class="btn btn-sm {f:if(condition: '{item.active}', then: 'btn-primary', else: 'btn-secondary')}" href="{item.link}">
+            {item.title}
+        </a>
+    </f:if>
+</f:for>
