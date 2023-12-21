@@ -15,7 +15,7 @@ declare(strict_types=1);
  * The TYPO3 project - inspiring people to share!
  */
 
-namespace T3thi\TranslationHandling\Generator;
+namespace T3thi\TranslationHandling\Content;
 
 /**
  * Get test strings

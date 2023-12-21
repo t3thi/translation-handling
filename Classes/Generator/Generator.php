@@ -18,6 +18,8 @@ declare(strict_types=1);
 namespace T3thi\TranslationHandling\Generator;
 
 use Doctrine\DBAL\Exception;
+use T3thi\TranslationHandling\Content\Content;
+use T3thi\TranslationHandling\Content\Kauderwelsch;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Configuration\SiteConfiguration;
 use TYPO3\CMS\Core\Core\Environment;
@@ -74,7 +76,7 @@ final class Generator
                 $newIdOfRecordsStorage => [
                     'title' => 'records storage',
                     'pid' => $newIdOfEntryPage,
-                    self::T3THI_FIELD => $t3thiIdentifier,
+                    self::T3THI_FIELD => $t3thiIdentifier. '_storage',
                     'hidden' => 0,
                     'doktype' => 254,
                 ],
@@ -92,24 +94,14 @@ final class Generator
             ],
         ];
 
-        $contentData = $this->getElementContent();
-
+        // Add content elements to home page
+        $contentData = Content::getHomeContent();
         foreach ($contentData as $cType => $ce) {
-            $newIdOfPage = StringUtility::getUniqueId('NEW');
-            $data['pages'][$newIdOfPage] = [
-                'title' => $cType,
-                self::T3THI_FIELD => $t3thiIdentifier,
-                'hidden' => 0,
-                'abstract' => Kauderwelsch::getLoremIpsum(),
-                'pid' => $newIdOfEntryPage,
-            ];
-
             foreach ($ce as $content) {
                 $newIdOfContent = StringUtility::getUniqueId('NEW');
                 $data['tt_content'][$newIdOfContent] = $content;
                 $data['tt_content'][$newIdOfContent]['CType'] = $cType;
-                $data['tt_content'][$newIdOfContent]['pid'] = $newIdOfPage;
-
+                $data['tt_content'][$newIdOfContent]['pid'] = $newIdOfEntryPage;
                 $data['tt_content'][$newIdOfContent][self::T3THI_FIELD] = $t3thiIdentifier;
             }
         }
@@ -126,7 +118,24 @@ final class Generator
         }
 
         $rootPageUid = (int)$this->findUidsOfPages([$t3thiIdentifier . '_root'])[0];
+        $storagePageUid = (int)$this->findUidsOfPages([$t3thiIdentifier . '_storage'])[0];
         $this->createSiteConfiguration($rootPageUid, $type, $domain, $title);
+
+
+        // Localize pages
+        $languageIds = $this->findLanguageIdsByRootPage($rootPageUid);
+        if (empty($languageIds)) {
+            return 'ERROR - no language uids found';
+        }
+
+        foreach ($languageIds as $languageId) {
+            $commands = [];
+            $commands['pages'][$storagePageUid]['localize'] = $languageId;
+            $commands['pages'][$rootPageUid]['localize'] = $languageId;
+            $this->executeDataHandler([], $commands);
+        }
+
+        // Todo: Localize / copyToLanguage content elements
 
         return 'page for type ' . $type . ' created';
     }
@@ -137,7 +146,7 @@ final class Generator
         $commands = [];
 
         // Delete pages - also deletes tt_content, sys_category and sys_file_references
-        $frontendPagesUids = $this->findUidsOfPages([$t3thiIdentifier . '_root', $t3thiIdentifier]);
+        $frontendPagesUids = $this->findUidsOfPages([$t3thiIdentifier . '_root', $t3thiIdentifier . '_storage', $t3thiIdentifier]);
         if (!empty($frontendPagesUids)) {
             foreach ($frontendPagesUids as $page) {
                 $commands['pages'][(int)$page]['delete'] = 1;
@@ -278,31 +287,6 @@ final class Generator
     }
 
     /**
-     * Return array of all content elements to create
-     *
-     * @return array
-     */
-    protected function getElementContent(): array
-    {
-        return [
-            'textmedia' => [
-                [
-                    'header' => Kauderwelsch::getLoremIpsum(),
-                    'header_layout' => 5,
-                    'subheader' => Kauderwelsch::getLoremIpsum(),
-                    'bodytext' => Kauderwelsch::getLoremIpsumHtml() . ' ' . Kauderwelsch::getLoremIpsumHtml(),
-                ],
-                [
-                    'header' => Kauderwelsch::getLoremIpsum(),
-                    'header_layout' => 2,
-                    'bodytext' => Kauderwelsch::getLoremIpsumHtml() . ' ' . Kauderwelsch::getLoremIpsumHtml(),
-                    'imageorient' => 25,
-                ],
-            ],
-        ];
-    }
-
-    /**
      * Returns the uid of the last "top level" page (has pid 0)
      * in the page tree. This is either a positive integer or 0
      * if no page exists in the page tree at all.
@@ -397,7 +381,7 @@ final class Generator
      *
      * @return int
      */
-    public function findHighestLanguageId(): int
+    protected function findHighestLanguageId(): int
     {
         $lastLanguageId = 0;
         foreach (GeneralUtility::makeInstance(SiteFinder::class)->getAllSites() as $site) {
@@ -408,5 +392,23 @@ final class Generator
             }
         }
         return $lastLanguageId;
+    }
+
+    /**
+     * Returns the language ids for the given root page
+     *
+     * @return int[]
+     */
+    protected function findLanguageIdsByRootPage(int $rootPageId): array
+    {
+        $lastLanguageIds = [];
+        $site = GeneralUtility::makeInstance(SiteFinder::class)->getSiteByRootPageId($rootPageId);
+        foreach ($site->getAllLanguages() as $language) {
+            if ($language->getLanguageId() > 0) {
+                $lastLanguageIds[] = $language->getLanguageId();
+            }
+        }
+
+        return $lastLanguageIds;
     }
 }
