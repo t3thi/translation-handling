@@ -181,7 +181,7 @@ final class Generator
     protected function createSiteConfiguration(
         int $rootPageId,
         string $type,
-        string $base = 'http://localhost/',
+        string $base = '/',
         string $title = 'TYPO3 Translation Handling'
     ): void {
         // When the DataHandler created the page tree, a default site configuration has been added. Fetch,  rename, update.
