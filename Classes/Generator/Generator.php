@@ -19,7 +19,6 @@ namespace T3thi\TranslationHandling\Generator;
 
 use Doctrine\DBAL\Exception;
 use T3thi\TranslationHandling\Content\Content;
-use T3thi\TranslationHandling\Content\Kauderwelsch;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Configuration\SiteConfiguration;
 use TYPO3\CMS\Core\Core\Environment;
@@ -43,9 +42,8 @@ final class Generator
 {
     public const T3THI_FIELD = 'tx_translationhandling_identifier';
 
-    public function create(string $type): string
+    public function create(string $type, string $basePath = ''): string
     {
-        $basePath = $type;
         $t3thiIdentifier = 'tx_translationhandling_' . $type;
         $title = 'TYPO3 Translation Handling - ' . strtoupper($type);
 
@@ -130,13 +128,18 @@ final class Generator
 
         foreach ($languageIds as $languageId) {
             $commands = [];
-            $commands['pages'][$storagePageUid]['localize'] = $languageId;
             $commands['pages'][$rootPageUid]['localize'] = $languageId;
+            $commands['pages'][$storagePageUid]['localize'] = $languageId;
             $this->executeDataHandler([], $commands);
         }
 
         // Todo: Localize / copyToLanguage content elements
-
+        // Todo: Create separate pages for Connected, Free, Mixed
+        // Todo: Add menus
+        // Todo: Add records
+        // Todo: Add CE with IRRE (and maybe nested IRRE)
+        // Todo: Add File to page
+        // Todo: Add IRRE to page
         return 'page for type ' . $type . ' created';
     }
 
@@ -202,6 +205,7 @@ final class Generator
             'baseVariants' => [],
             'errorHandling' => [],
             'languages' => [
+                // Todo: Use generic page names like the colors and make sure that the behaviour is somehow visible in frontend/backend
                 [
                     'title' => 'English',
                     'enabled' => true,
@@ -244,10 +248,13 @@ final class Generator
                     'hreflang' => 'es-MX',
                     'direction' => 'ltr',
                     'fallbackType' => $type,
-                    'fallbacks' => $highestLanguageId + 1 . ',0',
+                    'fallbacks' => $highestLanguageId + 1 . ',' . $highestLanguageId + 5 . ',0',
                     'flag' => 'indigo',
                     'languageId' => $highestLanguageId + 2,
                 ],
+                // todo: fallback to higher language id !!!
+                // (todo: there is some sorting of fallbacks in the core ???)
+                // (todo: first to 0 then to translation ???)
                 [
                     'title' => 'German DE',
                     'enabled' => true,
@@ -280,7 +287,7 @@ final class Generator
                     'flag' => 'green',
                     'languageId' => $highestLanguageId + 4,
                 ],
-
+                // todo: add language with two fallbacks, but not default language
             ],
         ];
         $siteConfiguration->write($siteIdentifier, $configuration);
