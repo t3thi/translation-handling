@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace T3thi\TranslationHandling\Generator;
 
-use Doctrine\DBAL\Exception;
 use T3thi\TranslationHandling\Content\Content;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Configuration\SiteConfiguration;
@@ -41,6 +40,7 @@ use TYPO3\CMS\Core\Utility\StringUtility;
 final class Generator
 {
     public const T3THI_FIELD = 'tx_translationhandling_identifier';
+    protected DataHandler $dataHandler;
 
     public function create(string $type, string $basePath = ''): string
     {
@@ -74,7 +74,7 @@ final class Generator
                 $newIdOfRecordsStorage => [
                     'title' => 'records storage',
                     'pid' => $newIdOfEntryPage,
-                    self::T3THI_FIELD => $t3thiIdentifier. '_storage',
+                    self::T3THI_FIELD => $t3thiIdentifier . '_storage',
                     'hidden' => 0,
                     'doktype' => 254,
                 ],
@@ -92,19 +92,11 @@ final class Generator
             ],
         ];
 
-        // Add content elements to home page
-        $contentData = Content::getHomeContent();
-        foreach ($contentData as $cType => $ce) {
-            foreach ($ce as $content) {
-                $newIdOfContent = StringUtility::getUniqueId('NEW');
-                $data['tt_content'][$newIdOfContent] = $content;
-                $data['tt_content'][$newIdOfContent]['CType'] = $cType;
-                $data['tt_content'][$newIdOfContent]['pid'] = $newIdOfEntryPage;
-                $data['tt_content'][$newIdOfContent][self::T3THI_FIELD] = $t3thiIdentifier;
-            }
-        }
-
         $this->executeDataHandler($data);
+
+        // Keep uids of created pages for translation, adding subpages and content
+        $rootPageUid = $this->dataHandler->substNEWwithIDs[$newIdOfEntryPage] ?? $newIdOfEntryPage;
+        $storagePageUid = $this->dataHandler->substNEWwithIDs[$newIdOfRecordsStorage] ?? $newIdOfRecordsStorage;
 
         // Create site configuration for frontend
         if (isset($GLOBALS['TYPO3_REQUEST']) && empty($basePath)) {
@@ -115,26 +107,60 @@ final class Generator
             $domain = empty($basePath) ? '/' : $basePath;
         }
 
-        $rootPageUid = (int)$this->findUidsOfPages([$t3thiIdentifier . '_root'])[0];
-        $storagePageUid = (int)$this->findUidsOfPages([$t3thiIdentifier . '_storage'])[0];
         $this->createSiteConfiguration($rootPageUid, $type, $domain, $title);
 
+        // Add content to root page
+        $rootContentElements = $this->addContentToPage(Content::getRootContent($type), $rootPageUid, $t3thiIdentifier);
 
-        // Localize pages
-        $languageIds = $this->findLanguageIdsByRootPage($rootPageUid);
-        if (empty($languageIds)) {
-            return 'ERROR - no language uids found';
+        // Add subpages with content elements
+        $translationModes = [
+            'free',
+            'connected',
+            'mixed',
+        ];
+
+        // Build page tree data array for translation
+        $pageTreeData['root'] = [
+            'uid' => $rootPageUid,
+            'contentElements' => $rootContentElements,
+        ];
+        $pageTreeData['storage'] = [
+            'uid' => $storagePageUid,
+        ];
+
+        $subPagesData = [];
+        foreach ($translationModes as $mode) {
+            $newIdOfPage = StringUtility::getUniqueId('NEW');
+            // Add subpage for each mode
+            $pageData = [
+                'pages' => [
+                    $newIdOfPage => [
+                        'title' => $mode,
+                        'pid' => $rootPageUid,
+                        self::T3THI_FIELD => $t3thiIdentifier,
+                        'hidden' => 0,
+                    ],
+                ],
+            ];
+            $this->executeDataHandler($pageData);
+
+            // Keep uid of created page for adding content elements and translation
+            $pageUid = $this->dataHandler->substNEWwithIDs[$newIdOfPage] ?? $newIdOfPage;
+
+            // Add content elements to each page
+            $contentElements = $this->addContentToPage(Content::getContent(), $pageUid, $t3thiIdentifier);
+
+            // Keep subpages data for translation
+            $pageTreeData['pages-' . $pageUid] = [
+                'uid' => $pageUid,
+                'mode' => $mode,
+                'contentElements' => $contentElements,
+            ];
         }
 
-        foreach ($languageIds as $languageId) {
-            $commands = [];
-            $commands['pages'][$rootPageUid]['localize'] = $languageId;
-            $commands['pages'][$storagePageUid]['localize'] = $languageId;
-            $this->executeDataHandler([], $commands);
-        }
+        // Localize page tree
+        $this->localizePageTree($pageTreeData);
 
-        // Todo: Localize / copyToLanguage content elements
-        // Todo: Create separate pages for Connected, Free, Mixed
         // Todo: Add menus
         // Todo: Add records
         // Todo: Add CE with IRRE (and maybe nested IRRE)
@@ -149,7 +175,11 @@ final class Generator
         $commands = [];
 
         // Delete pages - also deletes tt_content, sys_category and sys_file_references
-        $frontendPagesUids = $this->findUidsOfPages([$t3thiIdentifier . '_root', $t3thiIdentifier . '_storage', $t3thiIdentifier]);
+        $frontendPagesUids = $this->findUidsOfPages([
+            $t3thiIdentifier . '_root',
+            $t3thiIdentifier . '_storage',
+            $t3thiIdentifier,
+        ]);
         if (!empty($frontendPagesUids)) {
             foreach ($frontendPagesUids as $page) {
                 $commands['pages'][(int)$page]['delete'] = 1;
@@ -172,8 +202,8 @@ final class Generator
         // Delete records data
         $this->executeDataHandler([], $commands);
 
-//        // Delete created files
-//        $this->deleteFalFolder('translation_handling_' . $type);
+        // Delete created files
+        // $this->deleteFalFolder('translation_handling_' . $type);
 
         return 'page for type ' . $type . ' deleted';
     }
@@ -205,7 +235,6 @@ final class Generator
             'baseVariants' => [],
             'errorHandling' => [],
             'languages' => [
-                // Todo: Use generic page names like the colors and make sure that the behaviour is somehow visible in frontend/backend
                 [
                     'title' => 'Pink (Default)',
                     'enabled' => true,
@@ -265,7 +294,7 @@ final class Generator
                     'direction' => 'ltr',
                     'fallbackType' => $type,
                     // todo: there is some sorting of fallbacks in the core?
-                    'fallbacks' => implode(',', [$highestLanguageId + 4,$highestLanguageId + 5, 0]),
+                    'fallbacks' => implode(',', [$highestLanguageId + 4, $highestLanguageId + 5, 0]),
                     'flag' => 'yellow',
                     'languageId' => $highestLanguageId + 3,
                 ],
@@ -314,7 +343,7 @@ final class Generator
                     'hreflang' => 'cyan',
                     'direction' => 'ltr',
                     'fallbackType' => $type,
-                    'fallbacks' => implode(',', [$highestLanguageId + 5,$highestLanguageId + 4]),
+                    'fallbacks' => implode(',', [$highestLanguageId + 5, $highestLanguageId + 4]),
                     'flag' => 'cyan',
                     'languageId' => $highestLanguageId + 6,
                 ],
@@ -394,17 +423,17 @@ final class Generator
     protected function executeDataHandler(array $data = [], array $commands = []): void
     {
         if (!empty($data) || !empty($commands)) {
-            $dataHandler = GeneralUtility::makeInstance(DataHandler::class);
-            $dataHandler->enableLogging = false;
-            $dataHandler->bypassAccessCheckForRecords = true;
-            $dataHandler->bypassWorkspaceRestrictions = true;
-            $dataHandler->start($data, $commands);
+            $this->dataHandler = GeneralUtility::makeInstance(DataHandler::class);
+            $this->dataHandler->enableLogging = false;
+            $this->dataHandler->bypassAccessCheckForRecords = true;
+            $this->dataHandler->bypassWorkspaceRestrictions = true;
+            $this->dataHandler->start($data, $commands);
             if (Environment::isCli()) {
-                $dataHandler->clear_cacheCmd('all');
+                $this->dataHandler->clear_cacheCmd('all');
             }
 
-            empty($data) ?: $dataHandler->process_datamap();
-            empty($commands) ?: $dataHandler->process_cmdmap();
+            empty($data) ?: $this->dataHandler->process_datamap();
+            empty($commands) ?: $this->dataHandler->process_cmdmap();
 
             // Update signal only if not running in cli mode
             if (!Environment::isCli()) {
@@ -447,5 +476,185 @@ final class Generator
         }
 
         return $lastLanguageIds;
+    }
+
+    /**
+     * Localize records depending on backend translation mode
+     *
+     * @param string $tableName
+     * @param int $uid
+     * @param int $languageId
+     * @param string $translationMode
+     * @throws \T3thi\TranslationHandling\Generator\Exception
+     */
+    protected function generateTranslatedRecords(
+        string $tableName,
+        int $uid,
+        int $languageId,
+        string $translationMode
+    ): void {
+        if (!BackendUtility::isTableLocalizable($tableName)) {
+            return;
+        }
+
+        switch ($translationMode) {
+            case 'free':
+                // Free translation mode: copy to language
+                $this->localizeRecord($tableName, $uid, $languageId, 'copyToLanguage');
+                break;
+            case 'connected':
+                // Connected translation mode: translate
+                $this->localizeRecord($tableName, $uid, $languageId, 'localize');
+                break;
+            case 'mixed':
+                // Mixed mode: switch randomly between copying and translating
+                $rand = rand() & 1;
+                switch ($rand) {
+                    case 1:
+                        $this->localizeRecord($tableName, $uid, $languageId, 'localize');
+                        break;
+                    default:
+                        $this->localizeRecord($tableName, $uid, $languageId, 'copyToLanguage');
+                }
+
+                break;
+            default:
+                throw new Exception(
+                    'Unknown translation mode. ' . $translationMode,
+                    1704469009
+                );
+        }
+    }
+
+    /**
+     * Either localize or copyToLangaage single record
+     *
+     * @param string $tableName
+     * @param int $uid
+     * @param int $languageId
+     * @param string $mode // copyToLanguage, localize
+     */
+    protected function localizeRecord(
+        string $tableName,
+        int $uid,
+        int $languageId,
+        string $mode
+    ): void {
+        $commandMap = [
+            $tableName => [
+                $uid => [
+                    $mode => $languageId,
+                ],
+            ],
+        ];
+        $this->executeDataHandler([], $commandMap);
+    }
+
+    /**
+     * Localize pageTree
+     *
+     * @param array $pageTreeData
+     * @throws \T3thi\TranslationHandling\Generator\Exception
+     */
+    protected function localizePageTree(array $pageTreeData): void
+    {
+        $rootPageUid = $pageTreeData['root']['uid'] ?? 0;
+        $languageIds = $this->findLanguageIdsByRootPage($rootPageUid);
+        if (empty($languageIds)) {
+            throw new Exception(
+                'ERROR - no language uids found',
+                1704469009
+            );
+        }
+        foreach ($pageTreeData as $page) {
+            $translationMode = $page['mode'] ?? 'connected';
+            $pageUid = $page['uid'] ?? 0;
+            if ($pageUid === 0) {
+                continue;
+            }
+            foreach ($languageIds as $languageId) {
+                // Localize root page and subpages
+                $commands = [];
+                $commands['pages'][$pageUid]['localize'] = $languageId;
+                $this->executeDataHandler([], $commands);
+
+                // Localize content for page to all languages
+                $contentElements = $page['contentElements'] ?? [];
+                foreach ($contentElements as $contentElement) {
+                    // Don't translate if language is listed in excludeLanguages
+                    $excludeLanguages = $contentElement['config']['excludeLanguages'] ?? [];
+                    if (!is_array($excludeLanguages)) {
+                        throw new Exception(
+                            'type error: excludeLanguages for content must be array ',
+                            1704540645
+                        );
+                    }
+                    if (in_array($languageId, $excludeLanguages)) {
+                        continue;
+                    }
+                    $this->generateTranslatedRecords(
+                        'tt_content',
+                        $contentElement['uid'],
+                        $languageId,
+                        $translationMode
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Add content elements to page
+     *
+     * @param array $contentElements
+     * @param int $pageUid
+     * @param string $t3thiIdentifier
+     * @return array
+     */
+    protected function addContentToPage(array $contentElements, int $pageUid, string $t3thiIdentifier): array
+    {
+        $createdContentElements = [];
+        foreach ($contentElements as $cType => $ce) {
+            foreach ($ce as $content) {
+                $newIdOfContent = StringUtility::getUniqueId('NEW');
+                $contentData = [
+                    'tt_content' => [
+                        $newIdOfContent => array_merge(
+                            [
+                                'CType' => $cType,
+                                'pid' => $pageUid,
+                                self::T3THI_FIELD => $t3thiIdentifier,
+                            ],
+                            $this->cleanContentData($content)
+                        ),
+                    ],
+                ];
+                $this->executeDataHandler($contentData);
+
+                // Keep uids and config of created content elements
+                $createdContentElements[] = [
+                    'uid' => $this->dataHandler->substNEWwithIDs[$newIdOfContent] ?? $newIdOfContent,
+                    'config' => $content['config'] ?? [],
+                ];
+            }
+        }
+
+        return $createdContentElements;
+    }
+
+    /**
+     * Remove configuration keys from content array
+     * that should not be passed to DataHandler
+     *
+     * @param array $content
+     * @return array
+     */
+    protected function cleanContentData(array $content): array
+    {
+        if (isset($content['config'])) {
+            unset($content['config']);
+        }
+
+        return $content;
     }
 }

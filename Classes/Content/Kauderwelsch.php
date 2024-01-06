@@ -17,6 +17,8 @@ declare(strict_types=1);
 
 namespace T3thi\TranslationHandling\Content;
 
+use TYPO3\CMS\Core\Utility\StringUtility;
+
 /**
  * Get test strings
  *
@@ -25,13 +27,18 @@ namespace T3thi\TranslationHandling\Content;
 final class Kauderwelsch
 {
     /**
-     * Lorem ipsum test with fixed length.
+     * Lorem ipsum test with configurable length.
      *
      * @return string
      */
-    public static function getLoremIpsum(): string
+    public static function getLoremIpsum(int $maxCharacters = 0): string
     {
-        return 'Bacon ipsum dolor sit strong amet capicola jerky pork chop rump shoulder shank. Shankle strip steak pig salami link.';
+        $text = 'Bacon ipsum dolor sit strong amet capicola jerky pork chop rump shoulder shank. Shankle strip steak pig salami link.';
+        if (strlen($text) > $maxCharacters && $maxCharacters !== 0) {
+            $text = substr($text, 0, strrpos(substr($text, 0, $maxCharacters), ' '));
+        }
+
+        return $text;
     }
 
     /**
@@ -39,9 +46,24 @@ final class Kauderwelsch
      *
      * @return string
      */
-    public static function getLoremIpsumHtml(): string
+    public static function getLoremIpsumHtml(bool $addIdentifier): string
     {
-        return 'Bacon ipsum dolor sit <strong>strong amet capicola</strong> jerky pork chop rump shoulder shank. Shankle strip <a href="#">steak pig salami link</a>. Leberkas shoulder ham hock cow salami bacon <em>em pork pork</em> chop, jerky pork belly drumstick ham. Tri-tip strip steak sirloin prosciutto pastrami. Corned beef venison tenderloin, biltong meatball pork tongue short ribs jowl cow hamburger strip steak. Doner turducken jerky short loin chuck filet mignon.';
+        $prefix = '';
+        if($addIdentifier){
+            $prefix = '[' . StringUtility::getUniqueId('CE-') . '] ';
+        }
+
+        return $prefix . 'Bacon ipsum dolor sit strong amet capicola jerky pork chop rump shoulder shank. Shankle strip <a href="#">steak pig salami link</a>. Leberkas shoulder ham hock cow salami bacon <em>em pork pork</em> chop, jerky pork belly drumstick ham. Tri-tip strip steak sirloin prosciutto pastrami.';
+    }
+
+    public static function getIntroHeader(): string
+    {
+        return 'Demo: root page';
+    }
+
+    public static function getIntroText(string $fallbackType): string
+    {
+        return '<p>These are demo pages for Site Configuration with fallbackType ' . $fallbackType . ', created for testing TYPO3 language fallback/overlay behaviour. </p><p>There is one page tree per fallbackType. Each root page has three subpages for backend translation modes free, connected and mixed. </p><p>In order to avoid bias, languages are not defined as actual languages. Each language title hints at how fallbacks are configured.</p>';
     }
 
     /**
