@@ -58,11 +58,11 @@ final class GeneratorCommand extends Command
         switch ($input->getArgument('type')) {
             case 'fallback':
                 if ($input->getOption('create')) {
-                    $this->create('fallback',$output);
+                    $this->create('fallback', $output);
                 }
 
                 if ($input->getOption('delete')) {
-                    $this->delete('fallback',$output);
+                    $this->delete('fallback', $output);
                 }
                 break;
 

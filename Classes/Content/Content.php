@@ -17,8 +17,6 @@ declare(strict_types=1);
 
 namespace T3thi\TranslationHandling\Content;
 
-use TYPO3\CMS\Core\Utility\StringUtility;
-
 /**
  * Get data for content elements
  */
@@ -55,30 +53,26 @@ final class Content
         return [
             'text' => [
                 [
-                    'header' => Kauderwelsch::getLoremIpsum(20),
                     'header_layout' => 3,
-                    'bodytext' => Kauderwelsch::getLoremIpsumHtml(true),
+                    'bodytext' => Kauderwelsch::getLoremIpsumHtml(),
                 ],
                 [
-                    'header' => Kauderwelsch::getLoremIpsum(20),
                     'header_layout' => 3,
-                    'bodytext' => Kauderwelsch::getLoremIpsumHtml(true),
+                    'bodytext' => Kauderwelsch::getLoremIpsumHtml(),
                     'config' => [
                         'excludeLanguages' => [1, 2, 3, 4, 5, 6],
                     ],
                 ],
                 [
-                    'header' => Kauderwelsch::getLoremIpsum(20),
                     'header_layout' => 3,
-                    'bodytext' => Kauderwelsch::getLoremIpsumHtml(true),
+                    'bodytext' => Kauderwelsch::getLoremIpsumHtml(),
                     'config' => [
                         'excludeLanguages' => [4, 5],
                     ],
                 ],
                 [
-                    'header' => Kauderwelsch::getLoremIpsum(20),
                     'header_layout' => 3,
-                    'bodytext' => Kauderwelsch::getLoremIpsumHtml(true),
+                    'bodytext' => Kauderwelsch::getLoremIpsumHtml(),
                     'config' => [
                         'excludeLanguages' => [5],
                     ],
@@ -86,19 +80,17 @@ final class Content
             ],
             'textmedia' => [
                 [
-                    'header' => Kauderwelsch::getLoremIpsum(20),
                     'header_layout' => 3,
                     'subheader' => Kauderwelsch::getLoremIpsum(20),
-                    'bodytext' => Kauderwelsch::getLoremIpsumHtml(true),
+                    'bodytext' => Kauderwelsch::getLoremIpsumHtml(),
                     'imageorient' => 17,
                     'config' => [
                         'excludeLanguages' => [1],
                     ],
                 ],
                 [
-                    'header' => Kauderwelsch::getLoremIpsum(20),
                     'header_layout' => 3,
-                    'bodytext' => Kauderwelsch::getLoremIpsumHtml(true),
+                    'bodytext' => Kauderwelsch::getLoremIpsumHtml(),
                     'imageorient' => 18,
                     'config' => [
                         'excludeLanguages' => [4],

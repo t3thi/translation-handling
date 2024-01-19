@@ -21,39 +21,44 @@ use T3thi\TranslationHandling\Content\Content;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Configuration\SiteConfiguration;
 use TYPO3\CMS\Core\Core\Environment;
-use TYPO3\CMS\Core\Database\Connection;
-use TYPO3\CMS\Core\Database\ConnectionPool;
-use TYPO3\CMS\Core\Database\Query\QueryBuilder;
-use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\DataHandling\DataHandler;
 use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Utility\MathUtility;
 use TYPO3\CMS\Core\Utility\StringUtility;
 
 /**
  * Manage a page tree with all test / demo translationhandling data
- *
- * @internal
  */
 final class Generator
 {
     public const T3THI_FIELD = 'tx_translationhandling_identifier';
     protected DataHandler $dataHandler;
+    protected $recordFinder;
+
+    public function __construct(?RecordFinder $recordFinder = null)
+    {
+        $this->recordFinder = $recordFinder;
+    }
 
     public function create(string $type, string $basePath = ''): string
     {
+        $fileHandler = GeneralUtility::makeInstance(FileHandler::class);
         $t3thiIdentifier = 'tx_translationhandling_' . $type;
         $title = 'TYPO3 Translation Handling - ' . strtoupper($type);
 
         // Create should not be called if demo frontend data exists already
-        if (count($this->findUidsOfPages([$t3thiIdentifier . '_root']))) {
+        if (count($this->recordFinder->findUidsOfPages([$t3thiIdentifier . '_root'], self::T3THI_FIELD))) {
             throw new Exception(
                 'Can not create a second record tree for ' . $type,
                 1702623429
             );
         }
+
+        // Add files
+        $fileHandler->addToFal([
+            'Superhero_00032_.jpg',
+        ], 'EXT:translation_handling/Resources/Public/Images/', 'translation_handling');
 
         // Add entry page on top level
         $newIdOfEntryPage = StringUtility::getUniqueId('NEW');
@@ -64,7 +69,7 @@ final class Generator
             'pages' => [
                 $newIdOfEntryPage => [
                     'title' => $title,
-                    'pid' => 0 - $this->getUidOfLastTopLevelPage(),
+                    'pid' => 0 - $this->recordFinder->getUidOfLastTopLevelPage(),
                     // Define page as translation handling demo
                     self::T3THI_FIELD => $t3thiIdentifier . '_root',
                     'is_siteroot' => 1,
@@ -110,14 +115,11 @@ final class Generator
         $this->createSiteConfiguration($rootPageUid, $type, $domain, $title);
 
         // Add content to root page
-        $rootContentElements = $this->addContentToPage(Content::getRootContent($type), $rootPageUid, $t3thiIdentifier);
-
-        // Add subpages with content elements
-        $translationModes = [
-            'free',
-            'connected',
-            'mixed',
-        ];
+        $rootContentElements = $this->addContentToPage(
+            Content::getRootContent($type),
+            $rootPageUid,
+            $t3thiIdentifier
+        );
 
         // Build page tree data array for translation
         $pageTreeData['root'] = [
@@ -128,7 +130,12 @@ final class Generator
             'uid' => $storagePageUid,
         ];
 
-        $subPagesData = [];
+        // Add subpages with content elements per backend translation mode
+        $translationModes = [
+            'free',
+            'connected',
+            'mixed',
+        ];
         foreach ($translationModes as $mode) {
             $newIdOfPage = StringUtility::getUniqueId('NEW');
             // Add subpage for each mode
@@ -158,13 +165,19 @@ final class Generator
             ];
         }
 
+        // Add files to existing content elements and pages
+        $this->executeDataHandler($fileHandler->getFalDataForContent($type, self::T3THI_FIELD));
+        $this->executeDataHandler($fileHandler->getFalDataForPages($type, self::T3THI_FIELD));
+
+        // Write uid into header field (for identification with fallbacks)
+        $this->executeDataHandler($this->getContentHeaderData($type));
+
         // Localize page tree
         $this->localizePageTree($pageTreeData);
 
         // Todo: Add menus
         // Todo: Add records
         // Todo: Add CE with IRRE (and maybe nested IRRE)
-        // Todo: Add File to page
         // Todo: Add IRRE to page
         return 'page for type ' . $type . ' created';
     }
@@ -175,11 +188,11 @@ final class Generator
         $commands = [];
 
         // Delete pages - also deletes tt_content, sys_category and sys_file_references
-        $frontendPagesUids = $this->findUidsOfPages([
+        $frontendPagesUids = $this->recordFinder->findUidsOfPages([
             $t3thiIdentifier . '_root',
             $t3thiIdentifier . '_storage',
             $t3thiIdentifier,
-        ]);
+        ], self::T3THI_FIELD);
         if (!empty($frontendPagesUids)) {
             foreach ($frontendPagesUids as $page) {
                 $commands['pages'][(int)$page]['delete'] = 1;
@@ -188,7 +201,7 @@ final class Generator
 
         // Delete site configuration
         try {
-            $rootUid = $this->findUidsOfPages([$t3thiIdentifier . '_root']);
+            $rootUid = $this->recordFinder->findUidsOfPages([$t3thiIdentifier . '_root'], self::T3THI_FIELD);
 
             if (!empty($rootUid)) {
                 $site = GeneralUtility::makeInstance(SiteFinder::class)->getSiteByRootPageId((int)$rootUid[0]);
@@ -198,12 +211,14 @@ final class Generator
         } catch (SiteNotFoundException $e) {
             // Do not throw a thing if site config does not exist
         }
+        // TODO: delete site configuration folder
 
         // Delete records data
         $this->executeDataHandler([], $commands);
 
         // Delete created files
-        // $this->deleteFalFolder('translation_handling_' . $type);
+        $fileHandler = GeneralUtility::makeInstance(FileHandler::class);
+        $fileHandler->deleteFalFolder('translation_handling');
 
         return 'page for type ' . $type . ' deleted';
     }
@@ -226,7 +241,7 @@ final class Generator
         } catch (SiteNotFoundException $e) {
             // Do not rename, just write a new one
         }
-        $highestLanguageId = $this->findHighestLanguageId();
+        $highestLanguageId = $this->recordFinder->findHighestLanguageId();
         $configuration = [
             'base' => $base . $siteIdentifier,
             'rootPageId' => $rootPageId,
@@ -352,75 +367,7 @@ final class Generator
         $siteConfiguration->write($siteIdentifier, $configuration);
     }
 
-    /**
-     * Returns the uid of the last "top level" page (has pid 0)
-     * in the page tree. This is either a positive integer or 0
-     * if no page exists in the page tree at all.
-     *
-     * @return int
-     */
-    protected function getUidOfLastTopLevelPage(): int
-    {
-        $uid = 0;
-        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('pages');
-        $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
-
-        try {
-            $lastPage = $queryBuilder->select('uid')
-                ->from('pages')
-                ->where($queryBuilder->expr()->eq('pid', $queryBuilder->createNamedParameter(0, Connection::PARAM_INT)))
-                ->orderBy('sorting', 'DESC')
-                ->executeQuery()
-                ->fetchOne();
-        } catch (Exception $e) {
-            return 0;
-        }
-
-        if ($lastPage > 0 && MathUtility::canBeInterpretedAsInteger($lastPage)) {
-            $uid = (int)$lastPage;
-        }
-        return $uid;
-    }
-
-    /**
-     * Get all page UIDs by type
-     *
-     * @param array|string[] $types
-     * @return array
-     */
-    public function findUidsOfPages(array $types): array
-    {
-        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('pages');
-        $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
-
-        /** @var QueryBuilder $queryBuilder */
-        $queryBuilder->select('uid')
-            ->from('pages');
-
-        foreach ($types as $type) {
-            if (!str_starts_with($type, 'tx_translationhandling_')) {
-                continue;
-            }
-
-            $queryBuilder->orWhere(
-                $queryBuilder->expr()->eq(
-                    self::T3THI_FIELD,
-                    $queryBuilder->createNamedParameter((string)$type)
-                )
-            );
-        }
-
-        $rows = $queryBuilder->orderBy('pid', 'DESC')->executeQuery()->fetchAllAssociative();
-        $result = [];
-        if (is_array($rows)) {
-            $result = array_column($rows, 'uid');
-            sort($result);
-        }
-
-        return $result;
-    }
-
-    protected function executeDataHandler(array $data = [], array $commands = []): void
+    public function executeDataHandler(array $data = [], array $commands = []): void
     {
         if (!empty($data) || !empty($commands)) {
             $this->dataHandler = GeneralUtility::makeInstance(DataHandler::class);
@@ -443,48 +390,8 @@ final class Generator
     }
 
     /**
-     * Returns the highest language id from all sites
-     *
-     * @return int
-     */
-    protected function findHighestLanguageId(): int
-    {
-        $lastLanguageId = 0;
-        foreach (GeneralUtility::makeInstance(SiteFinder::class)->getAllSites() as $site) {
-            foreach ($site->getAllLanguages() as $language) {
-                if ($language->getLanguageId() > $lastLanguageId) {
-                    $lastLanguageId = $language->getLanguageId();
-                }
-            }
-        }
-        return $lastLanguageId;
-    }
-
-    /**
-     * Returns the language ids for the given root page
-     *
-     * @return int[]
-     */
-    protected function findLanguageIdsByRootPage(int $rootPageId): array
-    {
-        $lastLanguageIds = [];
-        $site = GeneralUtility::makeInstance(SiteFinder::class)->getSiteByRootPageId($rootPageId);
-        foreach ($site->getAllLanguages() as $language) {
-            if ($language->getLanguageId() > 0) {
-                $lastLanguageIds[] = $language->getLanguageId();
-            }
-        }
-
-        return $lastLanguageIds;
-    }
-
-    /**
      * Localize records depending on backend translation mode
      *
-     * @param string $tableName
-     * @param int $uid
-     * @param int $languageId
-     * @param string $translationMode
      * @throws \T3thi\TranslationHandling\Generator\Exception
      */
     protected function generateTranslatedRecords(
@@ -516,7 +423,6 @@ final class Generator
                     default:
                         $this->localizeRecord($tableName, $uid, $languageId, 'copyToLanguage');
                 }
-
                 break;
             default:
                 throw new Exception(
@@ -528,11 +434,6 @@ final class Generator
 
     /**
      * Either localize or copyToLangaage single record
-     *
-     * @param string $tableName
-     * @param int $uid
-     * @param int $languageId
-     * @param string $mode // copyToLanguage, localize
      */
     protected function localizeRecord(
         string $tableName,
@@ -553,13 +454,12 @@ final class Generator
     /**
      * Localize pageTree
      *
-     * @param array $pageTreeData
      * @throws \T3thi\TranslationHandling\Generator\Exception
      */
     protected function localizePageTree(array $pageTreeData): void
     {
         $rootPageUid = $pageTreeData['root']['uid'] ?? 0;
-        $languageIds = $this->findLanguageIdsByRootPage($rootPageUid);
+        $languageIds = $this->recordFinder->findLanguageIdsByRootPage($rootPageUid);
         if (empty($languageIds)) {
             throw new Exception(
                 'ERROR - no language uids found',
@@ -605,11 +505,6 @@ final class Generator
 
     /**
      * Add content elements to page
-     *
-     * @param array $contentElements
-     * @param int $pageUid
-     * @param string $t3thiIdentifier
-     * @return array
      */
     protected function addContentToPage(array $contentElements, int $pageUid, string $t3thiIdentifier): array
     {
@@ -645,9 +540,6 @@ final class Generator
     /**
      * Remove configuration keys from content array
      * that should not be passed to DataHandler
-     *
-     * @param array $content
-     * @return array
      */
     protected function cleanContentData(array $content): array
     {
@@ -656,5 +548,14 @@ final class Generator
         }
 
         return $content;
+    }
+
+    protected function getContentHeaderData(string $type): array
+    {
+        $recordData = [];
+        foreach ($this->recordFinder->findTtContent($type, self::T3THI_FIELD, []) as $content) {
+            $recordData['tt_content'][$content['uid']]['header'] = $content['uid'];
+        }
+        return $recordData;
     }
 }

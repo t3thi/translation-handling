@@ -17,8 +17,6 @@ declare(strict_types=1);
 
 namespace T3thi\TranslationHandling\Content;
 
-use TYPO3\CMS\Core\Utility\StringUtility;
-
 /**
  * Get test strings
  *
@@ -46,14 +44,9 @@ final class Kauderwelsch
      *
      * @return string
      */
-    public static function getLoremIpsumHtml(bool $addIdentifier): string
+    public static function getLoremIpsumHtml(): string
     {
-        $prefix = '';
-        if($addIdentifier){
-            $prefix = '[' . StringUtility::getUniqueId('CE-') . '] ';
-        }
-
-        return $prefix . 'Bacon ipsum dolor sit strong amet capicola jerky pork chop rump shoulder shank. Shankle strip <a href="#">steak pig salami link</a>. Leberkas shoulder ham hock cow salami bacon <em>em pork pork</em> chop, jerky pork belly drumstick ham. Tri-tip strip steak sirloin prosciutto pastrami.';
+        return 'Bacon ipsum dolor sit strong amet capicola jerky pork chop rump shoulder shank. Shankle strip <a href="#">steak pig salami link</a>. Leberkas shoulder ham hock cow salami bacon <em>em pork pork</em> chop, jerky pork belly drumstick ham. Tri-tip strip steak sirloin prosciutto pastrami.';
     }
 
     public static function getIntroHeader(): string
