@@ -1,23 +1,31 @@
 <html xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers" data-namespace-typo3-fluid="true">
 
+<f:asset.css identifier="translation-handling"
+             href="EXT:translation_handling/Resources/Public/Css/translation-handling.css"/>
+<f:asset.script identifier="popper" src="EXT:translation_handling/Resources/Public/JavaScript/popper.min.js"/>
+<f:asset.script identifier="bootstrap" src="EXT:translation_handling/Resources/Public/JavaScript/bootstrap.min.js"/>
+
 <nav class="navbar navbar-dark">
     <div class="container">
         <div class="col-5">
             <a class="navbar-brand" href="{f:uri.page(pageUid: rootPid)}">
-                <f:image src="EXT:backend/Resources/Public/Images/typo3_logo_orange.svg" height="20" class="pr-2" />
+                <f:image src="EXT:backend/Resources/Public/Images/typo3_logo_orange.svg" height="20" class="pr-2"/>
                 <f:if condition="{siteTitle}">
                     <f:then>{siteTitle}</f:then>
                     <f:else>TYPO3</f:else>
                 </f:if>
             </a>
         </div>
-        <div class="col-6 right">
-            <f:render partial="LanguageMenu" arguments="{_all}"/>
-        </div>
-        <div class="col-1">
-            <a class="navbar-brand" href="https://typo3.org/community/teams/typo3-development/initiatives/translation-handling" target="_blank">
-                <f:image src="EXT:translation_handling/Resources/Public/Icons/Extension.svg" height="30" class="tthi" />
-            </a>
+        <div class="col-7">
+            <div class="d-flex justify-content-end align-items-center">
+                <f:render partial="LanguageMenu" arguments="{_all}"/>
+                <a class="navbar-brand"
+                   href="https://typo3.org/community/teams/typo3-development/initiatives/translation-handling"
+                   target="_blank">
+                    <f:image src="EXT:translation_handling/Resources/Public/Icons/Extension.svg" height="30"
+                             class="tthi"/>
+                </a>
+            </div>
         </div>
     </div>
 </nav>

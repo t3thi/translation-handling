@@ -1,7 +1,27 @@
-<f:for each="{languageNavigation}" as="item">
-    <f:if condition="{item.available}">
-        <a class="btn btn-sm {f:if(condition: '{item.active}', then: 'btn-primary', else: 'btn-secondary')}" href="{item.link}">
-            {item.title}
-        </a>
-    </f:if>
-</f:for>
+{namespace core = TYPO3\CMS\Core\ViewHelpers}
+<div class="dropdown" xmlns:f="http://www.w3.org/1999/XSL/Transform">
+    <f:for each="{languageNavigation}" as="item">
+        <f:if condition="{item.available} && {item.active}">
+            <f:variable name="currentLanguage">{item}</f:variable>
+        </f:if>
+    </f:for>
+
+    <a class="btn btn-dark dropdown-toggle" href="#" role="button" id="dropdownMenuLink"
+       data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+        <core:icon identifier="{currentLanguage.flag}" size="small" />
+        {currentLanguage.title}
+    </a>
+
+    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenuLink">
+        <f:for each="{languageNavigation}" as="item">
+            <f:if condition="{item.available} && !{item.active}">
+                <li>
+                    <a class="dropdown-item" href="{item.link}">
+                        <core:icon identifier="{item.flag}" size="small" />
+                        {item.title}
+                    </a>
+                </li>
+            </f:if>
+        </f:for>
+    </ul>
+</div>

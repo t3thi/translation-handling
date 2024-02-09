@@ -34,5 +34,10 @@
         "typo3/cms": {
             "extension-key": "translation_handling"
         }
-    }
+    },
+	"scripts": {
+		"build": "cd Build && npm run build",
+		"lint": "cd Build && npm run lint",
+		"watch": "cd Build && npm run watch"
+	}
 }
