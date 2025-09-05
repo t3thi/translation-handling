@@ -1,5 +1,7 @@
 <?php
 
+use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
+
 defined('TYPO3') or die();
 
 call_user_func(function () {
@@ -12,5 +14,5 @@ call_user_func(function () {
             ],
         ],
     ];
-    \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addTCAcolumns('pages', $additionalColumns);
+    ExtensionManagementUtility::addTCAcolumns('pages', $additionalColumns);
 });

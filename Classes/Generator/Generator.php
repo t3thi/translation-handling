@@ -392,7 +392,7 @@ final class Generator
     /**
      * Localize records depending on backend translation mode
      *
-     * @throws \T3thi\TranslationHandling\Generator\Exception
+     * @throws Exception
      */
     protected function generateTranslatedRecords(
         string $tableName,
@@ -454,7 +454,7 @@ final class Generator
     /**
      * Localize pageTree
      *
-     * @throws \T3thi\TranslationHandling\Generator\Exception
+     * @throws Exception
      */
     protected function localizePageTree(array $pageTreeData): void
     {
