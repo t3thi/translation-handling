@@ -19,7 +19,7 @@ namespace T3thi\TranslationHandling\Generator;
 
 use T3thi\TranslationHandling\Content\Content;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
-use TYPO3\CMS\Core\Configuration\SiteConfiguration;
+use TYPO3\CMS\Core\Configuration\SiteWriter;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\DataHandling\DataHandler;
 use TYPO3\CMS\Core\Exception\SiteNotFoundException;
@@ -204,9 +204,9 @@ final class Generator
             $rootUid = $this->recordFinder->findUidsOfPages([$t3thiIdentifier . '_root'], self::T3THI_FIELD);
 
             if (!empty($rootUid)) {
-                $site = GeneralUtility::makeInstance(SiteFinder::class)->getSiteByRootPageId((int)$rootUid[0]);
+                $site = GeneralUtility::makeInstance(SiteFinder::class)?->getSiteByRootPageId((int)$rootUid[0]);
                 $identifier = $site->getIdentifier();
-                GeneralUtility::makeInstance(SiteConfiguration::class)->delete($identifier);
+                GeneralUtility::makeInstance(SiteWriter::class)?->delete($identifier);
             }
         } catch (SiteNotFoundException $e) {
             // Do not throw a thing if site config does not exist
@@ -234,9 +234,9 @@ final class Generator
     ): void {
         // When the DataHandler created the page tree, a default site configuration has been added. Fetch,  rename, update.
         $siteIdentifier = 'translation-handling-' . $type . '-' . $rootPageId;
-        $siteConfiguration = GeneralUtility::makeInstance(SiteConfiguration::class);
+        $siteConfiguration = GeneralUtility::makeInstance(SiteWriter::class);
         try {
-            $site = GeneralUtility::makeInstance(SiteFinder::class)->getSiteByRootPageId($rootPageId);
+            $site = GeneralUtility::makeInstance(SiteFinder::class)?->getSiteByRootPageId($rootPageId);
             $siteConfiguration->rename($site->getIdentifier(), $siteIdentifier);
         } catch (SiteNotFoundException $e) {
             // Do not rename, just write a new one
