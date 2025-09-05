@@ -30,13 +30,17 @@ final class FileHandler
 {
     public const T3THI_FOLDER = 'translation_handling';
 
+    public function __construct(
+        private readonly StorageRepository $storageRepository,
+        private readonly RecordFinder $recordFinder,
+    ) {}
+
     /**
      * Add files to fileadmin
      */
     public function addToFal(array $files, string $from, string $to): void
     {
-        $storageRepository = GeneralUtility::makeInstance(StorageRepository::class);
-        $storage = $storageRepository->findByUid(1);
+        $storage = $this->storageRepository->findByUid(1);
         $folder = $storage->getRootLevelFolder();
 
         try {
@@ -56,9 +60,7 @@ final class FileHandler
      */
     public function deleteFalFolder(string $path): void
     {
-        /** @var StorageRepository $storageRepository */
-        $storageRepository = GeneralUtility::makeInstance(StorageRepository::class);
-        $storage = $storageRepository->findByUid(1);
+        $storage = $this->storageRepository->findByUid(1);
         $folder = $storage->getRootLevelFolder();
         try {
             $folder = $folder->getSubfolder($path);
@@ -73,11 +75,10 @@ final class FileHandler
      */
     public function getFalDataForContent(string $type, string $t3hiField): array
     {
-        $recordFinder = GeneralUtility::makeInstance(RecordFinder::class);
         $files = $this->findDemoFileObjects();
 
         $recordData = [];
-        foreach ($recordFinder->findTtContent($type, $t3hiField) as $content) {
+        foreach ($this->recordFinder->findTtContent($type, $t3hiField) as $content) {
             switch ($content['CType']) {
                 case 'textmedia':
                     $fieldname = 'assets';
@@ -110,8 +111,7 @@ final class FileHandler
      */
     protected function findDemoFileObjects(): array
     {
-        $storageRepository = GeneralUtility::makeInstance(StorageRepository::class);
-        $storage = $storageRepository->findByUid(1);
+        $storage = $this->storageRepository->findByUid(1);
         $folder = $storage->getRootLevelFolder();
         $folder = $folder->getSubfolder(self::T3THI_FOLDER);
         return $folder->getFiles();
@@ -119,12 +119,11 @@ final class FileHandler
 
     public function getFalDataForPages(string $type, string $t3hiField): array
     {
-        $recordFinder = GeneralUtility::makeInstance(RecordFinder::class);
         $files = $this->findDemoFileObjects();
         $t3thiIdentifier = 'tx_translationhandling_' . $type;
 
         $recordData = [];
-        foreach ($recordFinder->findUidsOfPages([
+        foreach ($this->recordFinder->findUidsOfPages([
             $t3thiIdentifier . '_root',
             $t3thiIdentifier,
         ], $t3hiField) as $pageUid) {

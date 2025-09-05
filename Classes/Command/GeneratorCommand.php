@@ -24,7 +24,6 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use T3thi\TranslationHandling\Generator\Generator;
 use TYPO3\CMS\Core\Core\Bootstrap;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
  * Generate TCA for Styleguide backend (create / delete)
@@ -33,6 +32,12 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  */
 final class GeneratorCommand extends Command
 {
+    public function __construct(
+        private readonly Generator $generator,
+    ) {
+        parent::__construct();
+    }
+
     protected function configure(): void
     {
         $this->addArgument('type', InputArgument::OPTIONAL, 'Create page tree data, valid arguments are "fallback", "strict", "free" and "all"');
@@ -110,13 +115,11 @@ final class GeneratorCommand extends Command
 
     private function create(string $type, OutputInterface $output): void
     {
-        $generator = GeneralUtility::makeInstance(Generator::class);
-        $output->writeln($generator->create($type));
+        $output->writeln($this->generator->create($type));
     }
 
     private function delete(string $type, OutputInterface $output): void
     {
-        $generator = GeneralUtility::makeInstance(Generator::class);
-        $output->writeln($generator->delete($type));
+        $output->writeln($this->generator->delete($type));
     }
 }

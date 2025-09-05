@@ -23,6 +23,7 @@ use TYPO3\CMS\Core\Configuration\SiteWriter;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\DataHandling\DataHandler;
 use TYPO3\CMS\Core\Exception\SiteNotFoundException;
+use TYPO3\CMS\Core\Resource\StorageRepository;
 use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\StringUtility;
@@ -34,16 +35,18 @@ final class Generator
 {
     public const T3THI_FIELD = 'tx_translationhandling_identifier';
     protected DataHandler $dataHandler;
-    protected $recordFinder;
 
-    public function __construct(?RecordFinder $recordFinder = null)
+    public function __construct(
+        private readonly RecordFinder $recordFinder,
+        private readonly SiteFinder $siteFinder,
+        private readonly FileHandler $fileHandler,
+        private readonly SiteWriter $siteWriter,
+    )
     {
-        $this->recordFinder = $recordFinder;
     }
 
     public function create(string $type, string $basePath = ''): string
     {
-        $fileHandler = GeneralUtility::makeInstance(FileHandler::class);
         $t3thiIdentifier = 'tx_translationhandling_' . $type;
         $title = 'TYPO3 Translation Handling - ' . strtoupper($type);
 
@@ -56,7 +59,7 @@ final class Generator
         }
 
         // Add files
-        $fileHandler->addToFal([
+        $this->fileHandler->addToFal([
             'Superhero_00032_.jpg',
         ], 'EXT:translation_handling/Resources/Public/Images/', 'translation_handling');
 
@@ -166,8 +169,8 @@ final class Generator
         }
 
         // Add files to existing content elements and pages
-        $this->executeDataHandler($fileHandler->getFalDataForContent($type, self::T3THI_FIELD));
-        $this->executeDataHandler($fileHandler->getFalDataForPages($type, self::T3THI_FIELD));
+        $this->executeDataHandler($this->fileHandler->getFalDataForContent($type, self::T3THI_FIELD));
+        $this->executeDataHandler($this->fileHandler->getFalDataForPages($type, self::T3THI_FIELD));
 
         // Write uid into header field (for identification with fallbacks)
         $this->executeDataHandler($this->getContentHeaderData($type));
@@ -204,9 +207,9 @@ final class Generator
             $rootUid = $this->recordFinder->findUidsOfPages([$t3thiIdentifier . '_root'], self::T3THI_FIELD);
 
             if (!empty($rootUid)) {
-                $site = GeneralUtility::makeInstance(SiteFinder::class)?->getSiteByRootPageId((int)$rootUid[0]);
+                $site = $this->siteFinder->getSiteByRootPageId((int)$rootUid[0]);
                 $identifier = $site->getIdentifier();
-                GeneralUtility::makeInstance(SiteWriter::class)?->delete($identifier);
+                $this->siteWriter->delete($identifier);
             }
         } catch (SiteNotFoundException $e) {
             // Do not throw a thing if site config does not exist
@@ -217,8 +220,7 @@ final class Generator
         $this->executeDataHandler([], $commands);
 
         // Delete created files
-        $fileHandler = GeneralUtility::makeInstance(FileHandler::class);
-        $fileHandler->deleteFalFolder('translation_handling');
+        $this->fileHandler->deleteFalFolder('translation_handling');
 
         return 'page for type ' . $type . ' deleted';
     }
@@ -234,10 +236,9 @@ final class Generator
     ): void {
         // When the DataHandler created the page tree, a default site configuration has been added. Fetch,  rename, update.
         $siteIdentifier = 'translation-handling-' . $type . '-' . $rootPageId;
-        $siteConfiguration = GeneralUtility::makeInstance(SiteWriter::class);
         try {
-            $site = GeneralUtility::makeInstance(SiteFinder::class)?->getSiteByRootPageId($rootPageId);
-            $siteConfiguration->rename($site->getIdentifier(), $siteIdentifier);
+            $site = $this->siteFinder->getSiteByRootPageId($rootPageId);
+            $this->siteWriter->rename($site->getIdentifier(), $siteIdentifier);
         } catch (SiteNotFoundException $e) {
             // Do not rename, just write a new one
         }

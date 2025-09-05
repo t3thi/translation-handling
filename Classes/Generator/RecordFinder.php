@@ -31,13 +31,18 @@ use TYPO3\CMS\Core\Utility\MathUtility;
  */
 final class RecordFinder
 {
+    public function __construct(
+        private readonly ConnectionPool $connectionPool,
+        private readonly SiteFinder $siteFinder,
+    ) {}
+
     /**
      * Find tt_content by ctype and identifier
      */
     public function findTtContent(string $type, string $t3hiField, array $cTypes = ['textmedia', 'textpic', 'image', 'uploads']): array
     {
         $identifier = 'tx_translationhandling_' . $type;
-        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tt_content');
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable('tt_content');
 
         /** @var QueryBuilder $queryBuilder */
         $queryBuilder->select('uid', 'pid', 'CType')->from('tt_content')->where($queryBuilder->expr()->eq($t3hiField, $queryBuilder->createNamedParameter($identifier)));
@@ -62,7 +67,7 @@ final class RecordFinder
     public function getUidOfLastTopLevelPage(): int
     {
         $uid = 0;
-        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('pages');
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable('pages');
         $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
 
         try {
@@ -82,10 +87,8 @@ final class RecordFinder
      */
     public function findUidsOfPages(array $types, string $t3hiField): array
     {
-        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('pages');
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable('pages');
         $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
-
-        /** @var QueryBuilder $queryBuilder */
         $queryBuilder->select('uid')->from('pages');
 
         foreach ($types as $type) {
@@ -112,7 +115,7 @@ final class RecordFinder
     public function findHighestLanguageId(): int
     {
         $lastLanguageId = 0;
-        foreach (GeneralUtility::makeInstance(SiteFinder::class)->getAllSites() as $site) {
+        foreach ($this->siteFinder->getAllSites() as $site) {
             foreach ($site->getAllLanguages() as $language) {
                 if ($language->getLanguageId() > $lastLanguageId) {
                     $lastLanguageId = $language->getLanguageId();
@@ -128,7 +131,7 @@ final class RecordFinder
     public function findLanguageIdsByRootPage(int $rootPageId): array
     {
         $lastLanguageIds = [];
-        $site = GeneralUtility::makeInstance(SiteFinder::class)->getSiteByRootPageId($rootPageId);
+        $site = $this->siteFinder->getSiteByRootPageId($rootPageId);
         foreach ($site->getAllLanguages() as $language) {
             if ($language->getLanguageId() > 0) {
                 $lastLanguageIds[] = $language->getLanguageId();
