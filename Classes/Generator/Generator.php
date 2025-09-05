@@ -365,7 +365,7 @@ final class Generator
                 ],
             ],
         ];
-        $siteConfiguration->write($siteIdentifier, $configuration);
+        $this->siteWriter->write($siteIdentifier, $configuration);
     }
 
     public function executeDataHandler(array $data = [], array $commands = []): void
