@@ -17,8 +17,10 @@ declare(strict_types=1);
 
 namespace T3thi\TranslationHandling\Generator;
 
+use Psr\Log\LoggerInterface;
 use T3thi\TranslationHandling\Content\Content;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
+use TYPO3\CMS\Core\Configuration\Exception\SiteConfigurationWriteException;
 use TYPO3\CMS\Core\Configuration\SiteWriter;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\DataHandling\DataHandler;
@@ -44,19 +46,20 @@ final class Generator
         private readonly FileHandler $fileHandler,
         private readonly SiteWriter $siteWriter,
         private readonly TcaSchemaFactory $tcaSchemaFactory,
+        private readonly LoggerInterface $logger,
     ) {}
 
+    /**
+     * @throws Exception
+     */
     public function create(string $type, string $basePath = ''): string
     {
         $t3thiIdentifier = 'tx_translationhandling_' . $type;
         $title = 'TYPO3 Translation Handling - ' . strtoupper($type);
 
-        // Create should not be called if demo frontend data exists already
+        // Early return if demo data is already available for this type
         if (count($this->recordFinder->findUidsOfPages([$t3thiIdentifier . '_root'], self::T3THI_FIELD))) {
-            throw new Exception(
-                'Can not create a second record tree for ' . $type,
-                1702623429
-            );
+            return 'Can not create a second record tree for ' . $type;
         }
 
         // Add files
@@ -186,6 +189,9 @@ final class Generator
         return 'page for type ' . $type . ' created';
     }
 
+    /**
+     * @throws Exception
+     */
     public function delete(string $type): string
     {
         $t3thiIdentifier = 'tx_translationhandling_' . $type;
@@ -203,18 +209,25 @@ final class Generator
             }
         }
 
+        $rootUid = $this->recordFinder->findUidsOfPages([$t3thiIdentifier . '_root'], self::T3THI_FIELD);
+        if (empty($rootUid)) {
+            return 'page for type ' . $type . ' has already been deleted';
+        }
+
         // Delete site configuration
         try {
-            $rootUid = $this->recordFinder->findUidsOfPages([$t3thiIdentifier . '_root'], self::T3THI_FIELD);
-
-            if (!empty($rootUid)) {
-                $site = $this->siteFinder->getSiteByRootPageId((int)$rootUid[0]);
-                $identifier = $site->getIdentifier();
-                $this->siteWriter->delete($identifier);
-            }
+            $site = $this->siteFinder->getSiteByRootPageId((int)$rootUid[0]);
+            $identifier = $site->getIdentifier();
+            $this->siteWriter->delete($identifier);
+        } catch (SiteConfigurationWriteException $e) {
+            $message = 'Site configuration can not be deleted.';
+            $this->logger->error($message, ['exception' => $e]);
+            throw new Exception($message, 1757323932);
         } catch (SiteNotFoundException $e) {
             // Do not throw a thing if site config does not exist
+            $this->logger->info('Site configuration not found.', ['exception' => $e]);
         }
+
         // TODO: delete site configuration folder
 
         // Delete records data
@@ -228,6 +241,7 @@ final class Generator
 
     /**
      * Create a site configuration on new translation handling root page
+     * @throws Exception
      */
     protected function createSiteConfiguration(
         int $rootPageId,
@@ -240,8 +254,12 @@ final class Generator
         try {
             $site = $this->siteFinder->getSiteByRootPageId($rootPageId);
             $this->siteWriter->rename($site->getIdentifier(), $siteIdentifier);
+        } catch (SiteConfigurationWriteException $e) {
+            $message = 'Site configuration can not be renamed.';
+            $this->logger->error($message, ['exception' => $e]);
+            throw new Exception($message, 1757323932);
         } catch (SiteNotFoundException $e) {
-            // Do not rename, just write a new one
+            $this->logger->info('Do not rename, just write a new one', ['exception' => $e]);
         }
         $highestLanguageId = $this->recordFinder->findHighestLanguageId();
         $configuration = [
@@ -366,9 +384,18 @@ final class Generator
                 ],
             ],
         ];
-        $this->siteWriter->write($siteIdentifier, $configuration);
+        try {
+            $this->siteWriter->write($siteIdentifier, $configuration);
+        } catch (SiteConfigurationWriteException $e) {
+            $message = 'Site configuration cannot be written.';
+            $this->logger->error($message, ['exception' => $e]);
+            throw new Exception($message, 1757323932);
+        }
     }
 
+    /**
+     * @throws Exception
+     */
     public function executeDataHandler(array $data = [], array $commands = []): void
     {
         if (!empty($data) || !empty($commands)) {
@@ -384,6 +411,13 @@ final class Generator
             empty($data) ?: $this->dataHandler->process_datamap();
             empty($commands) ?: $this->dataHandler->process_cmdmap();
 
+            // Cancel if errors have occurred in the data handler
+            if (!empty($this->dataHandler->errorLog)) {
+                $message = 'DataHandler error(s): ' . implode($this->dataHandler->errorLog);
+                $this->logger->error($message);
+                throw new Exception($message, 1757323932);
+            }
+
             // Update signal only if not running in cli mode
             if (!Environment::isCli()) {
                 BackendUtility::setUpdateSignal('updatePageTree');
@@ -395,7 +429,6 @@ final class Generator
      * Localize records depending on backend translation mode
      *
      * @throws Exception
-     * @throws UndefinedSchemaException
      */
     protected function generateTranslatedRecords(
         string $tableName,
@@ -404,12 +437,22 @@ final class Generator
         string $translationMode
     ): void {
         if (!$this->tcaSchemaFactory->has($tableName)) {
-            return;
+            $message = 'No schema for table ' . $tableName;
+            $this->logger->error($message);
+            throw new Exception($message, 1757323932);
         }
 
-        $schema = $this->tcaSchemaFactory->get($tableName);
+        try {
+            $schema = $this->tcaSchemaFactory->get($tableName);
+        } catch (UndefinedSchemaException $e) {
+            $message = 'Could not get schema for table ' . $tableName;
+            $this->logger->error($message, ['exception' => $e]);
+            throw new Exception($message, 1757323932, $e);
+        }
         if (!$schema->hasCapability(TcaSchemaCapability::Language)) {
-            return;
+            $message = 'Table ' . $tableName . ' lacks Language capability';
+            $this->logger->error($message);
+            throw new Exception($message, 1757323932);
         }
 
         switch ($translationMode) {
@@ -433,15 +476,15 @@ final class Generator
                 }
                 break;
             default:
-                throw new Exception(
-                    'Unknown translation mode. ' . $translationMode,
-                    1704469009
-                );
+                $message = 'Unknown translation mode. ' . $translationMode;
+                $this->logger->error($message);
+                throw new Exception($message, 1704469009);
         }
     }
 
     /**
      * Either localize or copyToLangaage single record
+     * @throws Exception
      */
     protected function localizeRecord(
         string $tableName,
@@ -469,10 +512,9 @@ final class Generator
         $rootPageUid = $pageTreeData['root']['uid'] ?? 0;
         $languageIds = $this->recordFinder->findLanguageIdsByRootPage($rootPageUid);
         if (empty($languageIds)) {
-            throw new Exception(
-                'ERROR - no language uids found',
-                1704469009
-            );
+            $message = 'ERROR - no language uids found';
+            $this->logger->error($message);
+            throw new Exception($message, 1704469009);
         }
         foreach ($pageTreeData as $page) {
             $translationMode = $page['mode'] ?? 'connected';
@@ -492,10 +534,9 @@ final class Generator
                     // Don't translate if language is listed in excludeLanguages
                     $excludeLanguages = $contentElement['config']['excludeLanguages'] ?? [];
                     if (!is_array($excludeLanguages)) {
-                        throw new Exception(
-                            'type error: excludeLanguages for content must be array ',
-                            1704540645
-                        );
+                        $message = 'type error: excludeLanguages for content must be array';
+                        $this->logger->error($message);
+                        throw new Exception($message, 1704540645);
                     }
                     if (in_array($languageId, $excludeLanguages)) {
                         continue;
@@ -513,6 +554,7 @@ final class Generator
 
     /**
      * Add content elements to page
+     * @throws Exception
      */
     protected function addContentToPage(array $contentElements, int $pageUid, string $t3thiIdentifier): array
     {

@@ -17,13 +17,16 @@ declare(strict_types=1);
 
 namespace T3thi\TranslationHandling\Generator;
 
+use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
+use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\MathUtility;
+use \Doctrine\DBAL\Exception as DBALException;
 
 /**
  * Class contains helper methods to locate uids or pids of specific records
@@ -34,6 +37,7 @@ final class RecordFinder
     public function __construct(
         private readonly ConnectionPool $connectionPool,
         private readonly SiteFinder $siteFinder,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -55,7 +59,12 @@ final class RecordFinder
             $queryBuilder->andWhere((string)$orExpression);
         }
 
-        return $queryBuilder->orderBy('uid', 'DESC')->executeQuery()->fetchAllAssociative();
+        try {
+            return $queryBuilder->orderBy('uid', 'DESC')->executeQuery()->fetchAllAssociative();
+        } catch (DBALException $e) {
+            $this->logger->error('DB error while trying to fetch content of type ' . $type . ' and identifier field "' . $t3hiField . '".', ['exception' => $e]);
+            return [];
+        }
     }
 
     /**
@@ -71,7 +80,8 @@ final class RecordFinder
 
         try {
             $lastPage = $queryBuilder->select('uid')->from('pages')->where($queryBuilder->expr()->eq('pid', $queryBuilder->createNamedParameter(0, Connection::PARAM_INT)))->orderBy('sorting', 'DESC')->executeQuery()->fetchOne();
-        } catch (Exception $e) {
+        } catch (DBALException $e) {
+            $this->logger->error('DB error while fetching the last top-level page (pid=0) from the page tree.', ['exception' => $e]);
             return 0;
         }
 
@@ -98,8 +108,13 @@ final class RecordFinder
             $queryBuilder->orWhere($queryBuilder->expr()->eq($t3hiField, $queryBuilder->createNamedParameter((string)$type)));
         }
 
-        $rows = $queryBuilder->orderBy('pid', 'DESC')->executeQuery()->fetchAllAssociative();
         $result = [];
+        try {
+            $rows = $queryBuilder->orderBy('pid', 'DESC')->executeQuery()->fetchAllAssociative();
+        } catch (DBALException $e) {
+            $this->logger->error('DB error while fetching page UIDs for types ' . implode(', ', $types) . ' using field "' . $t3hiField . '".', ['exception' => $e]);
+            $rows = null;
+        }
         if (is_array($rows)) {
             $result = array_column($rows, 'uid');
             sort($result);
@@ -130,7 +145,12 @@ final class RecordFinder
     public function findLanguageIdsByRootPage(int $rootPageId): array
     {
         $lastLanguageIds = [];
-        $site = $this->siteFinder->getSiteByRootPageId($rootPageId);
+        try {
+            $site = $this->siteFinder->getSiteByRootPageId($rootPageId);
+        } catch (SiteNotFoundException $e) {
+            $this->logger->error('Site with root page id ' . $rootPageId . ' not found.', ['exception' => $e]);
+            return [];
+        }
         foreach ($site->getAllLanguages() as $language) {
             if ($language->getLanguageId() > 0) {
                 $lastLanguageIds[] = $language->getLanguageId();
