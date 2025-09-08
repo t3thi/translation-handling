@@ -24,6 +24,9 @@ use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\DataHandling\DataHandler;
 use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Resource\StorageRepository;
+use TYPO3\CMS\Core\Schema\Capability\TcaSchemaCapability;
+use TYPO3\CMS\Core\Schema\Exception\UndefinedSchemaException;
+use TYPO3\CMS\Core\Schema\TcaSchemaFactory;
 use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\StringUtility;
@@ -41,6 +44,7 @@ final class Generator
         private readonly SiteFinder $siteFinder,
         private readonly FileHandler $fileHandler,
         private readonly SiteWriter $siteWriter,
+        private readonly TcaSchemaFactory $tcaSchemaFactory,
     )
     {
     }
@@ -394,6 +398,7 @@ final class Generator
      * Localize records depending on backend translation mode
      *
      * @throws Exception
+     * @throws UndefinedSchemaException
      */
     protected function generateTranslatedRecords(
         string $tableName,
@@ -401,7 +406,12 @@ final class Generator
         int $languageId,
         string $translationMode
     ): void {
-        if (!BackendUtility::isTableLocalizable($tableName)) {
+        if (!$this->tcaSchemaFactory->has($tableName)) {
+            return;
+        }
+
+        $schema = $this->tcaSchemaFactory->get($tableName);
+        if (!$schema->hasCapability(TcaSchemaCapability::Language)) {
             return;
         }
 
