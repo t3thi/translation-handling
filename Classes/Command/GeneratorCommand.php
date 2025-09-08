@@ -22,6 +22,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use T3thi\TranslationHandling\Generator\Exception;
 use T3thi\TranslationHandling\Generator\Generator;
 use TYPO3\CMS\Core\Core\Bootstrap;
 
@@ -49,6 +50,7 @@ final class GeneratorCommand extends Command
      * @param InputInterface $input
      * @param OutputInterface $output
      * @return int
+     * @throws Exception
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -113,11 +115,17 @@ final class GeneratorCommand extends Command
         return Command::SUCCESS;
     }
 
+    /**
+     * @throws Exception
+     */
     private function create(string $type, OutputInterface $output): void
     {
         $output->writeln($this->generator->create($type));
     }
 
+    /**
+     * @throws Exception
+     */
     private function delete(string $type, OutputInterface $output): void
     {
         $output->writeln($this->generator->delete($type));
