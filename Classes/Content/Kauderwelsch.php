@@ -27,6 +27,7 @@ final class Kauderwelsch
     /**
      * Lorem ipsum test with configurable length.
      *
+     * @param int $maxCharacters
      * @return string
      */
     public static function getLoremIpsum(int $maxCharacters = 0): string

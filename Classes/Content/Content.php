@@ -25,6 +25,7 @@ final class Content
     /**
      * Get content elements for root pages
      *
+     * @param string $type
      * @return array
      */
     public static function getRootContent(string $type): array
