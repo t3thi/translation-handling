@@ -26,7 +26,7 @@ use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\MathUtility;
-use \Doctrine\DBAL\Exception as DBALException;
+use Doctrine\DBAL\Exception as DBALException;
 
 /**
  * Class contains helper methods to locate uids or pids of specific records
