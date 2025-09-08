@@ -62,7 +62,6 @@ final class RecordFinder
      * Returns the uid of the last "top level" page (has pid 0)
      * in the page tree. This is either a positive integer or 0
      * if no page exists in the page tree at all.
-     *
      */
     public function getUidOfLastTopLevelPage(): int
     {

@@ -23,7 +23,6 @@ use TYPO3\CMS\Core\Configuration\SiteWriter;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\DataHandling\DataHandler;
 use TYPO3\CMS\Core\Exception\SiteNotFoundException;
-use TYPO3\CMS\Core\Resource\StorageRepository;
 use TYPO3\CMS\Core\Schema\Capability\TcaSchemaCapability;
 use TYPO3\CMS\Core\Schema\Exception\UndefinedSchemaException;
 use TYPO3\CMS\Core\Schema\TcaSchemaFactory;
@@ -45,9 +44,7 @@ final class Generator
         private readonly FileHandler $fileHandler,
         private readonly SiteWriter $siteWriter,
         private readonly TcaSchemaFactory $tcaSchemaFactory,
-    )
-    {
-    }
+    ) {}
 
     public function create(string $type, string $basePath = ''): string
     {
