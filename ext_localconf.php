@@ -9,7 +9,7 @@ use TYPO3\CMS\Core\Log\Writer\FileWriter;
 defined('TYPO3') or die();
 
 $GLOBALS['TYPO3_CONF_VARS']['LOG']['T3thi']['TranslationHandling']['writerConfiguration'] = [
-    LogLevel::ERROR => [
+    LogLevel::WARNING => [
         FileWriter::class => [
             'logFile' => Environment::getVarPath() . '/log/translation_handling.log',
         ],
