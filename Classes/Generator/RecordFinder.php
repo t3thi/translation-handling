@@ -32,12 +32,12 @@ use Doctrine\DBAL\Exception as DBALException;
  * Class contains helper methods to locate uids or pids of specific records
  * in the system.
  */
-final class RecordFinder
+final readonly class RecordFinder
 {
     public function __construct(
-        private readonly ConnectionPool $connectionPool,
-        private readonly SiteFinder $siteFinder,
-        private readonly LoggerInterface $logger,
+        private ConnectionPool  $connectionPool,
+        private SiteFinder      $siteFinder,
+        private LoggerInterface $logger,
     ) {}
 
     /**
