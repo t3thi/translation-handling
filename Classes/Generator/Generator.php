@@ -37,8 +37,8 @@ use TYPO3\CMS\Core\Utility\StringUtility;
  */
 final class Generator
 {
-    public const T3THI_FIELD = 'tx_translationhandling_identifier';
-    protected DataHandler $dataHandler;
+    private const T3THI_FIELD = 'tx_translationhandling_identifier';
+    private DataHandler $dataHandler;
 
     public function __construct(
         private readonly RecordFinder $recordFinder,
@@ -243,7 +243,7 @@ final class Generator
      * Create a site configuration on new translation handling root page
      * @throws Exception
      */
-    protected function createSiteConfiguration(
+    private function createSiteConfiguration(
         int $rootPageId,
         string $type,
         string $base = '/',
@@ -396,7 +396,7 @@ final class Generator
     /**
      * @throws Exception
      */
-    public function executeDataHandler(array $data = [], array $commands = []): void
+    private function executeDataHandler(array $data = [], array $commands = []): void
     {
         if (!empty($data) || !empty($commands)) {
             $this->dataHandler = GeneralUtility::makeInstance(DataHandler::class);
@@ -430,7 +430,7 @@ final class Generator
      *
      * @throws Exception
      */
-    protected function generateTranslatedRecords(
+    private function generateTranslatedRecords(
         string $tableName,
         int $uid,
         int $languageId,
@@ -486,7 +486,7 @@ final class Generator
      * Either localize or copyToLangaage single record
      * @throws Exception
      */
-    protected function localizeRecord(
+    private function localizeRecord(
         string $tableName,
         int $uid,
         int $languageId,
@@ -507,7 +507,7 @@ final class Generator
      *
      * @throws Exception
      */
-    protected function localizePageTree(array $pageTreeData): void
+    private function localizePageTree(array $pageTreeData): void
     {
         $rootPageUid = $pageTreeData['root']['uid'] ?? 0;
         $languageIds = $this->recordFinder->findLanguageIdsByRootPage($rootPageUid);
@@ -556,7 +556,7 @@ final class Generator
      * Add content elements to page
      * @throws Exception
      */
-    protected function addContentToPage(array $contentElements, int $pageUid, string $t3thiIdentifier): array
+    private function addContentToPage(array $contentElements, int $pageUid, string $t3thiIdentifier): array
     {
         $createdContentElements = [];
         foreach ($contentElements as $cType => $ce) {
@@ -591,7 +591,7 @@ final class Generator
      * Remove configuration keys from content array
      * that should not be passed to DataHandler
      */
-    protected function cleanContentData(array $content): array
+    private function cleanContentData(array $content): array
     {
         if (isset($content['config'])) {
             unset($content['config']);
@@ -600,7 +600,7 @@ final class Generator
         return $content;
     }
 
-    protected function getContentHeaderData(string $type): array
+    private function getContentHeaderData(string $type): array
     {
         $recordData = [];
         foreach ($this->recordFinder->findTtContent($type, self::T3THI_FIELD, []) as $content) {

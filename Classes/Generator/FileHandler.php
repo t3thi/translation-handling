@@ -156,7 +156,7 @@ final class FileHandler
      *
      * @return array<int, FileInterface>
      */
-    protected function findDemoFileObjects(): array
+    private function findDemoFileObjects(): array
     {
         $storage = $this->storageRepository->findByUid(1);
         if (!$storage instanceof ResourceStorage) {
