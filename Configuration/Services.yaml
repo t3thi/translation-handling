@@ -6,8 +6,3 @@ services:
   T3thi\TranslationHandling\:
     resource: '../Classes/*'
     exclude: '../Classes/Domain/Model/*'
-
-  T3thi\TranslationHandling\Generator\Generator:
-    public: true
-    arguments:
-      - '@T3thi\TranslationHandling\Generator\RecordFinder'
