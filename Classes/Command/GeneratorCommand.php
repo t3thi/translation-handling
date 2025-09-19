@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace T3thi\TranslationHandling\Command;
 
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -31,6 +32,10 @@ use TYPO3\CMS\Core\Core\Bootstrap;
  *
  * @internal
  */
+#[AsCommand(
+    name: 'translation-handling:generate',
+    description: 'Generate page tree(s) with translation handling examples'
+)]
 final class GeneratorCommand extends Command
 {
     public function __construct(
