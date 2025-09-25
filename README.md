@@ -1,20 +1,20 @@
 # TYPO3 Translation Handling Initiative Extension
 
-This repository contains the **TYPO3 Translation Handling Initiative Extension**, a testing tool to easily reproduce translation-handling-related use cases in the latest TYPO3 Core. The extension is inspired by the official [styleguide extension](https://github.com/TYPO3-CMS/styleguide/).
+This repository contains the **TYPO3 Translation Handling Initiative Extension**, a testing tool to quickly reproduce translation‑handling related scenarios on current TYPO3 Core versions. The extension is inspired by the official [styleguide extension](https://github.com/TYPO3-CMS/styleguide/).
 
 ---
 
 ## Purpose
 
-The extension provides a quick and reproducible way to set up TYPO3 instances with predefined translation-related test cases. It is intended to support developers and integrators in validating concepts, testing edge cases, and experimenting with translation handling in TYPO3.
+Provide a fast, reproducible setup of TYPO3 demo sites with predefined, translation‑focused test cases. It helps developers and integrators validate concepts, cover edge cases, and experiment with different translation models.
 
 ---
 
 ## Scope
 
-* Generates demo sites and content structures for translation handling
-* Provides CLI commands for creating and managing test datasets
-* Includes example setups to simulate common and complex scenarios
+* Generates demo page trees and content structures for translation handling
+* Provides CLI commands to create and remove test datasets
+* Ships example setups for common and advanced scenarios
 
 ---
 
@@ -77,7 +77,7 @@ typo3 translation-handling:delete [type]
 We welcome input from the TYPO3 community:
 
 * Open [issues](https://github.com/t3thi/translation-handling/issues)
-* Share real-world use cases
+* Share real‑world use cases
 * Join discussions at TYPO3 Camps, DevDays, or Slack huddles
 
 ---
@@ -98,4 +98,4 @@ This repository is **work in progress**. It is a playground for experiments and 
 
 ## License
 
-This repository is licensed under the GPL v2 or later. See [LICENSE](LICENSE) for details.
+This repository is licensed under the **GPL v2 or later**. See [LICENSE](LICENSE) for details.
