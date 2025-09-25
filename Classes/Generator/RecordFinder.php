@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace T3thi\TranslationHandling\Generator;
 
+use Doctrine\DBAL\Exception as DBALException;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
@@ -26,7 +27,6 @@ use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\MathUtility;
-use Doctrine\DBAL\Exception as DBALException;
 
 /**
  * Class contains helper methods to locate uids or pids of specific records
@@ -35,8 +35,8 @@ use Doctrine\DBAL\Exception as DBALException;
 final readonly class RecordFinder
 {
     public function __construct(
-        private ConnectionPool  $connectionPool,
-        private SiteFinder      $siteFinder,
+        private ConnectionPool $connectionPool,
+        private SiteFinder $siteFinder,
         private LoggerInterface $logger,
     ) {}
 
