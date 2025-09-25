@@ -18,6 +18,52 @@ The extension provides a quick and reproducible way to set up TYPO3 instances wi
 
 ---
 
+## CLI Commands
+
+The extension registers two commands in the `translation-handling` namespace. Both commands accept an **optional** `type` argument to select which scenario(s) to operate on.
+
+Both commands initialize backend authentication for the `_cli_` user via TYPO3’s bootstrap before executing their actions.
+
+### Create page trees
+
+Create page tree(s) with translation handling examples.
+
+**Signature**
+
+```bash
+typo3 translation-handling:create [type]
+```
+
+**Argument**
+
+* `type` — Which scenario to create. Valid values:
+
+    * `fallback` – Generate a site/tree demonstrating a **fallback** model
+    * `strict`   – Generate a site/tree demonstrating a **strict** model
+    * `free`     – Generate a site/tree demonstrating a **free** model
+    * `all`      – Generate **all** of the above
+
+### Delete page trees
+
+Delete page tree(s) previously created by the `create` command.
+
+**Signature**
+
+```bash
+typo3 translation-handling:delete [type]
+```
+
+**Argument**
+
+* `type` — Which scenario to delete. Valid values:
+
+    * `fallback` – Delete the site/tree demonstrating a **fallback** model
+    * `strict`   – Delete the site/tree demonstrating a **strict** model
+    * `free`     – Delete the site/tree demonstrating a **free** model
+    * `all`      – Delete **all** of the above
+
+---
+
 ## Target Audience
 
 * TYPO3 Core developers working on translation features
