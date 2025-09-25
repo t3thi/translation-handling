@@ -17,13 +17,21 @@ declare(strict_types=1);
 
 namespace T3thi\TranslationHandling\Generator;
 
+use Doctrine\DBAL\Exception as DBALException;
 use Psr\Log\LoggerInterface;
+use TYPO3\CMS\Core\Database\Connection;
+use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Resource\Enum\DuplicationBehavior;
 use TYPO3\CMS\Core\Resource\Exception\ExistingTargetFileNameException;
 use TYPO3\CMS\Core\Resource\Exception\ExistingTargetFolderException;
+use TYPO3\CMS\Core\Resource\Exception\FileOperationErrorException;
 use TYPO3\CMS\Core\Resource\Exception\FolderDoesNotExistException;
+use TYPO3\CMS\Core\Resource\Exception\InsufficientFolderAccessPermissionsException;
 use TYPO3\CMS\Core\Resource\Exception\InsufficientFolderWritePermissionsException;
+use TYPO3\CMS\Core\Resource\Exception\InsufficientUserPermissionsException;
 use TYPO3\CMS\Core\Resource\FileInterface;
+use TYPO3\CMS\Core\Resource\Folder;
+use TYPO3\CMS\Core\Resource\FolderInterface;
 use TYPO3\CMS\Core\Resource\ResourceStorage;
 use TYPO3\CMS\Core\Resource\StorageRepository;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -38,6 +46,7 @@ final class FileHandler
 
     public function __construct(
         private readonly StorageRepository $storageRepository,
+        private readonly ConnectionPool $connectionPool,
         private readonly RecordFinder $recordFinder,
         private readonly LoggerInterface $logger,
     ) {}
@@ -88,7 +97,9 @@ final class FileHandler
     }
 
     /**
-     * Delete folder from fileadmin/
+     * Delete a folder in fileadmin/ only if no files inside
+     * are referenced (hard or soft references).
+     * Logs and skips deletion if reference exists.
      */
     public function deleteFalFolder(string $path): void
     {
@@ -103,16 +114,96 @@ final class FileHandler
         }
 
         $path = ltrim($path, '/');
-        $root = $storage->getRootLevelFolder();
-
         try {
+            $root = $storage->getRootLevelFolder();
             $folder = $root->getSubfolder($path);
         } catch (FolderDoesNotExistException $e) {
             $this->logger->info('The folder does not exist or has already been deleted.', ['exception' => $e]);
             return;
         }
 
-        $folder->delete();
+        // Check all files for references before deletion
+        if ($this->hasBlockingReferences($folder)) {
+            $this->logger->info('Folder deletion blocked due to existing references.', [
+                'folder' => $folder->getIdentifier(),
+            ]);
+            return;
+        }
+
+        // Delete folder recursively using the Storage API (core-like cleanup)
+        try {
+            $storage->deleteFolder($folder, true);
+        } catch (FileOperationErrorException $e) {
+            $this->logger->error(
+                'Failed to delete folder "' . $folder->getIdentifier() . '": file operation error.',
+                ['exception' => $e]
+            );
+            return;
+        } catch (InsufficientFolderAccessPermissionsException $e) {
+            $this->logger->error(
+                'Failed to delete folder "' . $folder->getIdentifier() . '": insufficient folder access permissions.',
+                ['exception' => $e]
+            );
+            return;
+        } catch (InsufficientUserPermissionsException $e) {
+            $this->logger->error(
+                'Failed to delete folder "' . $folder->getIdentifier() . '": insufficient user permissions.',
+                ['exception' => $e]
+            );
+            return;
+        }
+
+        $this->logger->info('Folder deleted', ['folder' => $folder->getIdentifier()]);
+    }
+
+    /**
+     * Check if any file in the folder has hard or soft references.
+     *
+     * @return bool true if reference exists, false otherwise
+     */
+    private function hasBlockingReferences(FolderInterface $folder): bool
+    {
+        foreach ($folder->getFiles(0, 0, Folder::FILTER_MODE_USE_OWN_AND_STORAGE_FILTERS, true) as $file) {
+            $fileUid = (int)$file->getUid();
+
+            // Hard references (sys_file_reference)
+            $hard = $this->connectionPool
+                ->getConnectionForTable('sys_file_reference')
+                ->count('uid', 'sys_file_reference', [
+                    'uid_local' => $fileUid,
+                    'deleted' => 0,
+                ]);
+
+            if ($hard > 0) {
+                return true;
+            }
+
+            // Soft references (sys_refindex)
+            $queryBuilder = $this->connectionPool->getQueryBuilderForTable('sys_refindex');
+            try {
+                $soft = (int)$queryBuilder
+                    ->count('hash')
+                    ->from('sys_refindex')
+                    ->where(
+                        $queryBuilder->expr()->eq('ref_table', $queryBuilder->createNamedParameter('sys_file')),
+                        $queryBuilder->expr()->eq('ref_uid', $queryBuilder->createNamedParameter($fileUid, Connection::PARAM_INT))
+                    )
+                    ->executeQuery()
+                    ->fetchOne();
+            } catch (DBALException $e) {
+                $this->logger->error(
+                    'Failed to fetch soft reference count for file UID ' . $fileUid . ' from sys_refindex.',
+                    ['exception' => $e]
+                );
+                return true;
+            }
+
+            if ($soft > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
