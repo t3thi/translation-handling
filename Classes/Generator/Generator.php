@@ -464,17 +464,6 @@ final class Generator
                 // Connected translation mode: translate
                 $this->localizeRecord($tableName, $uid, $languageId, 'localize');
                 break;
-            case 'mixed':
-                // Mixed mode: switch randomly between copying and translating
-                $rand = rand() & 1;
-                switch ($rand) {
-                    case 1:
-                        $this->localizeRecord($tableName, $uid, $languageId, 'localize');
-                        break;
-                    default:
-                        $this->localizeRecord($tableName, $uid, $languageId, 'copyToLanguage');
-                }
-                break;
             default:
                 $message = 'Unknown translation mode. ' . $translationMode;
                 $this->logger->error($message);
@@ -530,6 +519,7 @@ final class Generator
 
                 // Localize content for page to all languages
                 $contentElements = $page['contentElements'] ?? [];
+                $i = 0;
                 foreach ($contentElements as $contentElement) {
                     // Don't translate if language is listed in excludeLanguages
                     $excludeLanguages = $contentElement['config']['excludeLanguages'] ?? [];
@@ -538,15 +528,26 @@ final class Generator
                         $this->logger->error($message);
                         throw new Exception($message, 1704540645);
                     }
-                    if (in_array($languageId, $excludeLanguages)) {
+
+                    if (in_array($languageId, $excludeLanguages, true)) {
+                        $i++;
                         continue;
                     }
+
+                    // Mixed deterministic: even position => connected (locate), odd => free (copy)
+                    if ($translationMode === 'mixed') {
+                        $elementMode = ($i % 2 === 0) ? 'connected' : 'free';
+                    } else {
+                        $elementMode = $translationMode;
+                    }
+
                     $this->generateTranslatedRecords(
                         'tt_content',
                         $contentElement['uid'],
                         $languageId,
-                        $translationMode
+                        $elementMode
                     );
+                    $i++;
                 }
             }
         }
