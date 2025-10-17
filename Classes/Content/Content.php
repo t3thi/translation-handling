@@ -78,6 +78,14 @@ final class Content
                         'excludeLanguages' => [5],
                     ],
                 ],
+                [
+                    'header_layout' => 3,
+                    'sys_language_uid' => -1,
+                    'bodytext' => '<p>I\'m a "Lanuage All" contentelement!</p>',
+                    'config' => [
+                        'excludeLanguages' => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+                    ],
+                ],
             ],
             'textmedia' => [
                 [
