@@ -17,13 +17,13 @@ declare(strict_types=1);
 
 namespace T3thi\TranslationHandling\Command;
 
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use T3thi\TranslationHandling\Generator\Exception;
-use T3thi\TranslationHandling\Generator\Generator;
+use T3thi\TranslationHandling\Event\DeleteTranslationHandlingScenarioEvent;
 use TYPO3\CMS\Core\Core\Bootstrap;
 
 /**
@@ -38,7 +38,7 @@ use TYPO3\CMS\Core\Core\Bootstrap;
 final class DeleteCommand extends Command
 {
     public function __construct(
-        private readonly Generator $generator,
+        private readonly EventDispatcherInterface $eventDispatcher
     ) {
         parent::__construct();
     }
@@ -52,45 +52,25 @@ final class DeleteCommand extends Command
      * @param InputInterface $input
      * @param OutputInterface $output
      * @return int
-     * @throws Exception
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         // Make sure the _cli_ user is loaded
         Bootstrap::initializeBackendAuthentication();
 
-        switch ($input->getArgument('type')) {
-            case 'fallback':
-                $this->delete('fallback', $output);
-                break;
+        $type = $input->getArgument('type');
+        if ($type === 'all') {
+            $this->eventDispatcher->dispatch(new DeleteTranslationHandlingScenarioEvent('fallback', $output));
+            $this->eventDispatcher->dispatch(new DeleteTranslationHandlingScenarioEvent('strict', $output));
+            $this->eventDispatcher->dispatch(new DeleteTranslationHandlingScenarioEvent('free', $output));
+        } elseif (in_array($type, ['fallback', 'strict', 'free'])) {
+            $this->eventDispatcher->dispatch(new DeleteTranslationHandlingScenarioEvent($type, $output));
+        } else {
+            $output->writeln('<error>Please specify a valid action. Choose "fallback", "strict", "free" or "all"</error>');
 
-            case 'strict':
-                $this->delete('strict', $output);
-                break;
-
-            case 'free':
-                $this->delete('free', $output);
-                break;
-
-            case 'all':
-                $this->delete('fallback', $output);
-                $this->delete('strict', $output);
-                $this->delete('free', $output);
-                break;
-
-            default:
-                $output->writeln('<error>Please specify a valid action. Choose "fallback", "strict", "free" or "all"</error>');
-                return Command::FAILURE;
+            return Command::FAILURE;
         }
 
         return Command::SUCCESS;
-    }
-
-    /**
-     * @throws Exception
-     */
-    private function delete(string $type, OutputInterface $output): void
-    {
-        $output->writeln($this->generator->delete($type));
     }
 }

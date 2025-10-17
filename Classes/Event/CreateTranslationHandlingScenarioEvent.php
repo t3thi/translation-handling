@@ -15,9 +15,24 @@ declare(strict_types=1);
  * The TYPO3 project - inspiring people to share!
  */
 
-namespace T3thi\TranslationHandling\Generator;
+namespace T3thi\TranslationHandling\Event;
 
-/**
- * Generator exception
- */
-class Exception extends \TYPO3\CMS\Core\Exception {}
+use Symfony\Component\Console\Output\OutputInterface;
+
+final class CreateTranslationHandlingScenarioEvent
+{
+    public function __construct(
+        private readonly string $type,
+        private readonly OutputInterface $output
+    ) {}
+
+    public function getType(): string
+    {
+        return $this->type;
+    }
+
+    public function getOutput(): OutputInterface
+    {
+        return $this->output;
+    }
+}

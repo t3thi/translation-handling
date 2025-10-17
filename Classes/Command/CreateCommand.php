@@ -17,13 +17,13 @@ declare(strict_types=1);
 
 namespace T3thi\TranslationHandling\Command;
 
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use T3thi\TranslationHandling\Generator\Exception;
-use T3thi\TranslationHandling\Generator\Generator;
+use T3thi\TranslationHandling\Event\CreateTranslationHandlingScenarioEvent;
 use TYPO3\CMS\Core\Core\Bootstrap;
 
 /**
@@ -38,12 +38,13 @@ use TYPO3\CMS\Core\Core\Bootstrap;
 final class CreateCommand extends Command
 {
     public function __construct(
-        private readonly Generator $generator,
+        private readonly EventDispatcherInterface $eventDispatcher
     ) {
         parent::__construct();
     }
 
     protected function configure(): void
+
     {
         $this->addArgument('type', InputArgument::OPTIONAL, 'Create page tree data (valid arguments are "fallback", "strict", "free" and "all")');
     }
@@ -52,45 +53,25 @@ final class CreateCommand extends Command
      * @param InputInterface $input
      * @param OutputInterface $output
      * @return int
-     * @throws Exception
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         // Make sure the _cli_ user is loaded
         Bootstrap::initializeBackendAuthentication();
+        $type = $input->getArgument('type');
 
-        switch ($input->getArgument('type')) {
-            case 'fallback':
-                $this->create('fallback', $output);
-                break;
+        if ($type === 'all') {
+            $this->eventDispatcher->dispatch(new CreateTranslationHandlingScenarioEvent('fallback', $output));
+            $this->eventDispatcher->dispatch(new CreateTranslationHandlingScenarioEvent('strict', $output));
+            $this->eventDispatcher->dispatch(new CreateTranslationHandlingScenarioEvent('free', $output));
+        } elseif (in_array($type, ['fallback', 'strict', 'free'])) {
+            $this->eventDispatcher->dispatch(new CreateTranslationHandlingScenarioEvent($type, $output));
+        } else {
+            $output->writeln('<error>Please specify a valid action. Choose "fallback", "strict", "free" or "all"</error>');
 
-            case 'strict':
-                $this->create('strict', $output);
-                break;
-
-            case 'free':
-                $this->create('free', $output);
-                break;
-
-            case 'all':
-                $this->create('fallback', $output);
-                $this->create('strict', $output);
-                $this->create('free', $output);
-                break;
-
-            default:
-                $output->writeln('<error>Please specify a valid action. Choose "fallback", "strict", "free" or "all"</error>');
-                return Command::FAILURE;
+            return Command::FAILURE;
         }
 
         return Command::SUCCESS;
-    }
-
-    /**
-     * @throws Exception
-     */
-    private function create(string $type, OutputInterface $output): void
-    {
-        $output->writeln($this->generator->create($type));
     }
 }

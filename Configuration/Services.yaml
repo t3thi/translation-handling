@@ -3,6 +3,43 @@ services:
     autowire: true
     autoconfigure: true
     public: false
+
   T3thi\TranslationHandling\:
     resource: '../Classes/*'
     exclude: '../Classes/Domain/Model/*'
+
+  T3thi\TranslationHandling\EventListener\CreateTranslationHandlingScenarioListener:
+    tags:
+      - name: event.listener
+        identifier: 'translation-handling-create-scenario'
+        event: T3thi\TranslationHandling\Event\CreateTranslationHandlingScenarioEvent
+
+  T3thi\TranslationHandling\EventListener\PageCreationListener:
+    tags:
+      - name: event.listener
+        identifier: 'translation-handling-page-creation'
+        event: T3thi\TranslationHandling\Event\PageCreationEvent
+
+  T3thi\TranslationHandling\EventListener\SiteConfigurationCreationListener:
+    tags:
+      - name: event.listener
+        identifier: 'translation-handling-site-configuration-creation'
+        event: T3thi\TranslationHandling\Event\SiteConfigurationCreationEvent
+
+  T3thi\TranslationHandling\EventListener\ContentCreationListener:
+    tags:
+      - name: event.listener
+        identifier: 'translation-handling-content-creation'
+        event: T3thi\TranslationHandling\Event\ContentCreationEvent
+
+  T3thi\TranslationHandling\EventListener\LocalizationListener:
+    tags:
+      - name: event.listener
+        identifier: 'translation-handling-localization'
+        event: T3thi\TranslationHandling\Event\LocalizationEvent
+
+  T3thi\TranslationHandling\EventListener\DeleteTranslationHandlingScenarioListener:
+    tags:
+      - name: event.listener
+        identifier: 'translation-handling-delete-scenario'
+        event: T3thi\TranslationHandling\Event\DeleteTranslationHandlingScenarioEvent
