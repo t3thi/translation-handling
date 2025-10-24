@@ -529,6 +529,11 @@ final class Generator
                         throw new Exception($message, 1704540645);
                     }
 
+                    if (in_array('all', $excludeLanguages, true)) {
+                        $i++;
+                        continue;
+                    }
+
                     if (in_array($languageId, $excludeLanguages, true)) {
                         $i++;
                         continue;
