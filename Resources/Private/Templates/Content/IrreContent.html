@@ -1,0 +1,22 @@
+<html xmlns:f="http://typo3.org/ns/TYPO3/CMS/Fluid/ViewHelpers" data-namespace-typo3-fluid="true" lang="en">
+<f:layout/>
+<f:section name="Main">
+    <f:if condition="{children}">
+        <div class="t3thi-irrecontent">
+            <ul class="t3thi-irrecontent__children">
+                <f:for each="{children}" as="child">
+                    <li
+                        class="t3thi-irrecontent__child"
+                        data-child-uid="{child.data.uid}"
+                        data-child-language="{child.data.sys_language_uid}"
+                    >
+                        <h3 class="t3thi-irrecontent__title">
+                            {child.data.title}
+                        </h3>
+                    </li>
+                </f:for>
+            </ul>
+        </div>
+    </f:if>
+</f:section>
+</html>
