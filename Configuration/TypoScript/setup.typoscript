@@ -94,3 +94,23 @@ page {
     }
   }
 }
+
+tt_content {
+  t3thi_irrecontent =< lib.contentElement
+  t3thi_irrecontent {
+    templateName = IrreContent
+
+    dataProcessing {
+      10 = TYPO3\CMS\Frontend\DataProcessing\DatabaseQueryProcessor
+      10 {
+        table = t3thi_irrecontent_children
+        pidInList.field = pid
+
+        where = foreign_table_parent_uid = {field:uid}
+        where.insertData = 1
+
+        as = children
+      }
+    }
+  }
+}
