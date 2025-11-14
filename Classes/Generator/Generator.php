@@ -402,7 +402,6 @@ final class Generator
             $this->dataHandler = GeneralUtility::makeInstance(DataHandler::class);
             $this->dataHandler->enableLogging = false;
             $this->dataHandler->bypassAccessCheckForRecords = true;
-            $this->dataHandler->bypassWorkspaceRestrictions = true;
             $this->dataHandler->start($data, $commands);
             if (Environment::isCli()) {
                 $this->dataHandler->clear_cacheCmd('all');
